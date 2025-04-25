@@ -1,10 +1,8 @@
+import { useNavigate } from 'react-router-dom'
 import GameCard from '../components/GameCard'
 
 const Home = () => {
-  const handleGameClick = (gameName) => {
-    alert(`You clicked ${gameName}!`)
-    // eventually: route or modal launch
-  }
+  const navigate = useNavigate()
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-16">
@@ -18,14 +16,9 @@ const Home = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
         <GameCard
-          title="Asteroids"
-          description="Blast rocks into space dust. Classic arcade action!"
-          onClick={() => handleGameClick('Asteroids')}
-        />
-        <GameCard
           title="Pong"
           description="The original duel — retro tennis in digital form."
-          onClick={() => handleGameClick('Pong')}
+          onClick={() => navigate('/pong')}
         />
       </div>
     </div>
