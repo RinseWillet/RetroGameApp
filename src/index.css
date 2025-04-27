@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+
+body {
+  font-family: 'Orbitron', sans-serif;
+}
+
 /* CRT Overlay (optional) */
 body::before {
   content: "";
@@ -15,12 +20,25 @@ body::before {
     transparent 3px
   );
   z-index: 50;
-}
+} 
 
 .neon-text {
   text-shadow:
     0 0 5px #ff00ff,
     0 0 10px #ff00ff,
     0 0 20px #ff00ff,
-    0 0 40px #ff00ff;
+    0 0 40px #ff00ff,
+    0 0 80px #ff00ff;
+}
+
+@keyframes moveStars {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 1000px; }
+}
+
+.animate-stars {
+  background-image: radial-gradient(white 1px, transparent 20px);
+  background-size: 10px 10px;
+  animation: moveStars 60s linear infinite;
+  opacity: 0.15;
 }

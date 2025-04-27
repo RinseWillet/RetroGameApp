@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import useSynthFX from '../hooks/useSynthFX'
+import { useNavigate } from 'react-router-dom';
 
 const Pong = () => {
+  const navigate = useNavigate(); 
   const canvasRef = useRef(null);
   const keysDownRef = useRef({});
   const animationRef = useRef(null);
@@ -9,7 +11,7 @@ const Pong = () => {
   const { beep } = useSynthFX();
 
 
-  useEffect(() => {
+  useEffect(() => {    
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const width = canvas.width = 1200;
@@ -151,6 +153,9 @@ const Pong = () => {
     const ball = new Ball(width / 2, height / 2);
 
     const render = () => {
+      // Calculate a pulsing alpha value based on time
+      const time = Date.now() / 700; // Adjust speed by changing 500
+      const alpha = 0.75 + 0.25 * Math.sin(time); // Pulsates between 0 and 1
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, width, height);
 
@@ -164,7 +169,7 @@ const Pong = () => {
       ctx.stroke();
 
       // Scores
-      ctx.font = "50px monospace";
+      ctx.font = "40px 'Press Start 2P', monospace";
       ctx.fillStyle = "white";
       ctx.textAlign = "center";
       ctx.fillText(player.paddle.score || 0, width / 4, 50);
@@ -176,10 +181,10 @@ const Pong = () => {
 
       if (!gameStartedRef.current) {
         // Draw "Press Space to Start" if game not started
-        ctx.font = "70px monospace"
-        ctx.fillStyle = "white"
+        ctx.font = "50px 'Press Start 2P', monospace";
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
+        ctx.fillText("Press SPACE to Start", width / 2, height / 2);
         ctx.textAlign = "center";
-
 
         if (player.paddle.score >= 10) {
           ctx.fillText("PLAYER WINS!", width / 2, height / 2);
@@ -189,6 +194,14 @@ const Pong = () => {
           ctx.fillText("Press SPACE to Start", width / 2, height / 2);
         }
       }
+
+      // --- Subtle CRT Scanlines ---
+      const scanlineAlpha = 0.03 + 0.01 * Math.sin(Date.now() / 500);
+      ctx.fillStyle = `rgba(255, 255, 255, ${scanlineAlpha.toFixed(3)})`;
+      for (let y = 0; y < height; y += 4) {
+        ctx.fillRect(0, y, width, 1);
+      }
+
     }
 
     const update = () => {
@@ -244,15 +257,27 @@ const Pong = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center">
-      <h1 className="text-4xl font-bold text-pink-400 mb-6 neon-text">Pong</h1>
+    <div className="relative min-h-screen bg-black overflow-hidden flex flex-col items-center justify-center">
+
+      {/* Background stars */}
+      <div className="absolute inset-0 z-0 animate-stars pointer-events-none" />
+
+      {/* Foreground Pong */}
+      <h1 className="text-4xl font-bold text-pink-400 mb-6 neon-text z-10">Pong</h1>
       <canvas
         ref={canvasRef}
         width={1200}
         height={800}
-        className="border-4 border-pink-500 bg-black"
+        className="border-4 border-pink-500 bg-black z-10"
       />
+      <button
+        onClick={() => navigate('/')}
+        className="mt-8 px-6 py-3 border-2 border-pink-500 text-pink-400 hover:bg-pink-600 hover:text-black rounded-xl font-bold text-lg transition-all duration-300 neon-text"
+      >
+        Back to Games
+      </button>
     </div>
+
   )
 }
 

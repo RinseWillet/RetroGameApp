@@ -20,6 +20,11 @@ const Home = () => {
           description="The original duel — retro tennis in digital form."
           onClick={() => navigate('/pong')}
         />
+        <GameCard
+          title="Asteroids"
+          description="The ultimate space survival game — shoot, move, live."
+          onClick={() => navigate('/asteroids')}
+        />
       </div>
     </div>
   )
