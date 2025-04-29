@@ -6,11 +6,12 @@ const SHIP_SIZE = 30;
 const TURN_SPEED = 360;
 const THRUST = 5;
 const FRICTION = 0.7;
+const HYPERSPACE_COOLDOWN = 180; // 3 seconds @ 60FPS
+const DEBUG = false; // set to false to disable hitbox drawing
 
 //Asteroid constants:
 const ASTEROID_SPEED = 50 / FPS; // pixels per frame (since everything updates every frame)
 const ASTEROID_RADIUS = 100; // initial asteroid size
-const HITBOX_MULTIPLIER = 1.2;
 
 //Bullet constants
 const BULLET_SPEED = 500 / FPS;
@@ -29,6 +30,11 @@ const Asteroids = () => {
     const invincibleTime = useRef(0);
     const particlesRef = useRef([]);
     const shipDebrisRef = useRef([]);
+    const scoreRef = useRef(0);
+    const livesRef = useRef(3);
+    const gameOverRef = useRef(false);
+    const waveRef = useRef(1);
+    const hyperspaceCooldownRef = useRef(0);
 
     const shipRef = useRef({
         x: 600,
@@ -42,6 +48,7 @@ const Asteroids = () => {
 
     const createAsteroids = (canvas, count = 5) => {
         const newAsteroids = [];
+        const speedMultiplier = 1 + 0.1 * (waveRef.current - 1); // 10% faster per wave
         for (let i = 0; i < count; i++) {
             const sides = Math.floor(Math.random() * 9) + 8; // 8-16 sides
             const vertices = [];
@@ -52,8 +59,8 @@ const Asteroids = () => {
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
                 r: ASTEROID_RADIUS,
-                xVel: (Math.random() - 0.5) * ASTEROID_SPEED,
-                yVel: (Math.random() - 0.5) * ASTEROID_SPEED,
+                xVel: (Math.random() - 0.5) * ASTEROID_SPEED * speedMultiplier,
+                yVel: (Math.random() - 0.5) * ASTEROID_SPEED * speedMultiplier,
                 angle: Math.random() * Math.PI * 2,
                 rotationSpeed: (Math.random() - 0.5) * 0.01,
                 sides: sides,
@@ -69,6 +76,15 @@ const Asteroids = () => {
         const x = asteroid.x;
         const y = asteroid.y;
         const r = asteroid.r;
+
+        // Score bonus based on asteroid size
+        if (r > ASTEROID_RADIUS / 2) {
+            scoreRef.current += 20;
+        } else if (r > ASTEROID_RADIUS / 4) {
+            scoreRef.current += 50;
+        } else {
+            scoreRef.current += 100;
+        }
 
         // Split if not small
         if (r > ASTEROID_RADIUS / 4) { // Large (>80) or Medium (>40)
@@ -96,6 +112,12 @@ const Asteroids = () => {
 
         // Remove original asteroid
         asteroidsRef.current.splice(index, 1);
+
+        // Check if all asteroids are gone
+        if (asteroidsRef.current.length === 0 && !gameOverRef.current) {
+            waveRef.current++;
+            createAsteroids(canvasRef.current, 5 + waveRef.current); // spawn more each wave
+        }
     };
 
     const spawnParticles = (x, y, count = 15) => {
@@ -168,17 +190,127 @@ const Asteroids = () => {
         return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
     };
 
+    // Polygon collision helpers
+    const getShipPolygon = (ship) => {
+        return [
+            { x: ship.x + (4 / 3) * ship.r * Math.cos(ship.a), y: ship.y - (4 / 3) * ship.r * Math.sin(ship.a) },
+            { x: ship.x - ship.r * (Math.cos(ship.a) + 0.6 * Math.sin(ship.a)), y: ship.y + ship.r * (Math.sin(ship.a) - 0.6 * Math.cos(ship.a)) },
+            { x: ship.x - 0.5 * ship.r * (Math.cos(ship.a) + Math.sin(ship.a)), y: ship.y + 0.5 * ship.r * (Math.sin(ship.a) - Math.cos(ship.a)) },
+            { x: ship.x - 0.5 * ship.r * (Math.cos(ship.a) - Math.sin(ship.a)), y: ship.y + 0.5 * ship.r * (Math.sin(ship.a) + Math.cos(ship.a)) },
+            { x: ship.x - ship.r * (Math.cos(ship.a) - 0.6 * Math.sin(ship.a)), y: ship.y + ship.r * (Math.sin(ship.a) + 0.6 * Math.cos(ship.a)) }
+        ];
+    };
+
+    const getAsteroidPolygon = (asteroid) => {
+        const points = [];
+        for (let i = 0; i < asteroid.sides; i++) {
+            const angle = asteroid.angle + i * Math.PI * 2 / asteroid.sides;
+            points.push({
+                x: asteroid.x + asteroid.r * asteroid.vertices[i] * Math.cos(angle),
+                y: asteroid.y + asteroid.r * asteroid.vertices[i] * Math.sin(angle)
+            });
+        }
+        return points;
+    };
+
+    const polygonsIntersect = (poly1, poly2) => {
+        const polys = [poly1, poly2];
+        for (let i = 0; i < polys.length; i++) {
+            const polygon = polys[i];
+            for (let j = 0; j < polygon.length; j++) {
+                const k = (j + 1) % polygon.length;
+                const p1 = polygon[j];
+                const p2 = polygon[k];
+
+                const normal = { x: p2.y - p1.y, y: p1.x - p2.x };
+
+                let minA = Infinity, maxA = -Infinity;
+                for (const p of poly1) {
+                    const projected = normal.x * p.x + normal.y * p.y;
+                    minA = Math.min(minA, projected);
+                    maxA = Math.max(maxA, projected);
+                }
+
+                let minB = Infinity, maxB = -Infinity;
+                for (const p of poly2) {
+                    const projected = normal.x * p.x + normal.y * p.y;
+                    minB = Math.min(minB, projected);
+                    maxB = Math.max(maxB, projected);
+                }
+
+                if (maxA < minB || maxB < minA) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+
+    const pointInPolygon = (point, polygon) => {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i].x, yi = polygon[i].y;
+            const xj = polygon[j].x, yj = polygon[j].y;
+
+            const intersect = ((yi > point.y) !== (yj > point.y)) &&
+                (point.x < (xj - xi) * (point.y - yi) / (yj - yi + 0.000001) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    };
+
     const checkShipCollision = () => {
         if (invincible.current) return false;
 
         const ship = shipRef.current;
+        const shipPoly = getShipPolygon(ship);
         for (const ast of asteroidsRef.current) {
+            const asteroidPoly = getAsteroidPolygon(ast);
             const d = dist(ship.x, ship.y, ast.x, ast.y);
-            if (d < ship.r + ast.r * HITBOX_MULTIPLIER) {
+            if (polygonsIntersect(shipPoly, asteroidPoly)) {
                 return true;
             }
         }
         return false;
+    };
+
+    const hyperspaceJump = (canvas) => {
+        let safe = false;
+        let attempts = 0;
+
+        while (!safe && attempts < 100) {
+            const newX = Math.random() * canvas.width;
+            const newY = Math.random() * canvas.height;
+
+            safe = true;
+            for (const ast of asteroidsRef.current) {
+                if (dist(newX, newY, ast.x, ast.y) < ast.r * 2) { // 2x radius for safety
+                    safe = false;
+                    break;
+                }
+            }
+
+            if (safe) {
+                shipRef.current.x = newX;
+                shipRef.current.y = newY;
+            }
+            attempts++;
+        }
+    };
+
+    //debugging purpose
+    const drawPolygon = (ctx, points, color = 'lime') => {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            ctx.lineTo(points[i].x, points[i].y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
     };
 
     useEffect(() => {
@@ -186,6 +318,10 @@ const Asteroids = () => {
         const ctx = canvas.getContext('2d');
 
         createAsteroids(canvas);
+
+        // Immediately give the ship invincibility after start/restart
+        invincible.current = true;
+        invincibleTime.current = 180; // 3 seconds at 60FPS
 
         const handleKeyDown = (e) => {
             keyRefs.current[e.code] = true;
@@ -202,6 +338,17 @@ const Asteroids = () => {
                     });
                 }
             }
+
+            if (e.code === 'KeyR' && gameOverRef.current) {
+                window.location.reload(); // quick full reload
+            }
+
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                if (hyperspaceCooldownRef.current <= 0 && !shipExploding.current && !gameOverRef.current) {
+                    hyperspaceJump(canvas);
+                    hyperspaceCooldownRef.current = HYPERSPACE_COOLDOWN;
+                }
+            }
         };
 
         const handleKeyUp = (e) => {
@@ -212,6 +359,8 @@ const Asteroids = () => {
         window.addEventListener('keyup', handleKeyUp);
 
         const updateShip = () => {
+            if (gameOverRef.current) return;
+
             const keys = keyRefs.current;
             const ship = shipRef.current;
 
@@ -227,6 +376,12 @@ const Asteroids = () => {
             if (shipExploding.current) {
                 explosionTime.current--;
                 if (explosionTime.current <= 0) {
+                    livesRef.current--;
+
+                    if (livesRef.current <= 0) {
+                        gameOverRef.current = true;
+                    }
+
                     // Reset ship position
                     ship.x = canvas.width / 2;
                     ship.y = canvas.height / 2;
@@ -276,6 +431,7 @@ const Asteroids = () => {
         };
 
         const updateAsteroids = () => {
+            if (gameOverRef.current) return;
             asteroidsRef.current.forEach(ast => {
                 ast.x += ast.xVel;
                 ast.y += ast.yVel;
@@ -285,6 +441,7 @@ const Asteroids = () => {
         };
 
         const updateBullets = () => {
+            if (gameOverRef.current) return;
             const bullets = bulletsRef.current;
             const asteroids = asteroidsRef.current;
 
@@ -298,10 +455,11 @@ const Asteroids = () => {
                 const bullet = bullets[i];
                 for (let j = asteroids.length - 1; j >= 0; j--) {
                     const ast = asteroids[j];
-                    if (dist(bullet.x, bullet.y, ast.x, ast.y) < ast.r * HITBOX_MULTIPLIER) {
+                    const asteroidPoly = getAsteroidPolygon(ast);
+                    if (pointInPolygon({ x: bullet.x, y: bullet.y }, asteroidPoly)) {
                         destroyAsteroid(j);
-                        bullets.splice(i, 1); // remove bullet
-                        break; // move to next bullet
+                        bullets.splice(i, 1); //remove bullet
+                        break; //move to next bullet
                     }
                 }
             }
@@ -359,17 +517,17 @@ const Asteroids = () => {
                     x - 0.4 * shipRef.current.r * (Math.cos(a) + Math.sin(a)),
                     y + 0.4 * shipRef.current.r * (Math.sin(a) - Math.cos(a))
                 );
-        
+
                 ctx.lineTo(
                     x - (1.2 + Math.random() * 0.4) * shipRef.current.r * Math.cos(a),
                     y + (1.2 + Math.random() * 0.4) * shipRef.current.r * Math.sin(a)
                 );
-        
+
                 ctx.lineTo(
                     x - 0.4 * shipRef.current.r * (Math.cos(a) - Math.sin(a)),
                     y + 0.4 * shipRef.current.r * (Math.sin(a) + Math.cos(a))
                 );
-        
+
                 ctx.closePath();
                 ctx.stroke();
             }
@@ -406,13 +564,35 @@ const Asteroids = () => {
                 d.angle += d.rotationSpeed;
                 d.life--;
             });
-        
+
             shipDebrisRef.current = shipDebrisRef.current.filter(d => d.life > 0);
         };
 
         const render = () => {
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            //draw score and lives
+            ctx.fillStyle = 'white';
+            ctx.font = '20px "Press Start 2P"';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Score: ${scoreRef.current}`, canvas.width / 2, 40);
+
+            ctx.textAlign = 'left';
+            const shipSize = SHIP_SIZE / 2; // smaller version
+            for (let i = 0; i < livesRef.current; i++) {
+                const offsetX = 20 + i * (shipSize + 10); // 10px gap between ships
+                const offsetY = 60;
+                drawShip(offsetX, offsetY, Math.PI / 2, false, 'white');
+            }
+
+            // Draw hyperspace cooldown text
+            if (hyperspaceCooldownRef.current > 0) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${(hyperspaceCooldownRef.current / HYPERSPACE_COOLDOWN).toFixed(2)})`;
+                ctx.font = '15px "Press Start 2P", Arial'; // Same retro font, smaller size
+                ctx.textAlign = 'center';
+                ctx.fillText(`Hyperspace cooling down...`, canvas.width / 2, 70);
+            }
 
             //asteroid explosion particles
             particlesRef.current.forEach(p => {
@@ -443,7 +623,7 @@ const Asteroids = () => {
                 ctx.restore()
             });
 
-            //respawning blinking ship 
+            //respawning blinking ship or drawing the ship normally
             if (!shipExploding.current) {
                 if (invincible.current) {
                     if (Math.floor(invincibleTime.current / 10) % 2 === 0) {
@@ -470,14 +650,47 @@ const Asteroids = () => {
                 ctx.fill();
             });
 
+            //asteroids
             asteroidsRef.current.forEach(drawAsteroid);
-            // ctx.strokeStyle = 'red';
-            // ctx.lineWidth = 1;
-            // asteroidsRef.current.forEach(ast => {
-            //     ctx.beginPath();
-            //     ctx.arc(ast.x, ast.y, ast.r * HITBOX_MULTIPLIER, 0, Math.PI * 2);
-            //     ctx.stroke();
-            // });
+
+            //debugging mode - shows hit boxes
+            if (DEBUG) {
+                // Draw asteroid polygons
+                asteroidsRef.current.forEach(ast => {
+                    const astPoly = getAsteroidPolygon(ast);
+                    drawPolygon(ctx, astPoly, 'lime');
+                });
+
+                // Draw ship polygon
+                const shipPoly = getShipPolygon(shipRef.current);
+
+                let shipColor = 'cyan';
+                if (!shipExploding.current) {
+                    // Only check collision if ship is alive
+                    for (const ast of asteroidsRef.current) {
+                        const astPoly = getAsteroidPolygon(ast);
+                        if (polygonsIntersect(shipPoly, astPoly)) {
+                            shipColor = 'red';
+                            break;
+                        }
+                    }
+                } else {
+                    shipColor = 'blue'; // or any color you want when ship is exploded
+                }
+                drawPolygon(ctx, shipPoly, shipColor);
+            }
+
+            //Draw gameover
+            if (gameOverRef.current) {
+                ctx.fillStyle = 'white';
+                ctx.font = '50px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
+
+                ctx.fillStyle = 'white';
+                ctx.font = '20px "Press Start 2P"';
+                ctx.fillText('Press R to Restart', canvas.width / 2, canvas.height / 2 + 50);
+            }
         };
 
         const gameLoop = () => {
@@ -486,6 +699,9 @@ const Asteroids = () => {
             updateAsteroids();
             updateParticles();
             updateShipDebris();
+            if (hyperspaceCooldownRef.current > 0) {
+                hyperspaceCooldownRef.current--;
+            }
             render();
             animationRef.current = requestAnimationFrame(gameLoop);
         };
