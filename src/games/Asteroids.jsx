@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useSynthFX from '../hooks/useSynthFX'
+import useSoundFX from '../hooks/useSoundFX';
 
 const FPS = 60;
 const SHIP_SIZE = 30;
@@ -35,9 +36,10 @@ const Asteroids = () => {
     const livesRef = useRef(3);
     const gameOverRef = useRef(false);
     const waveRef = useRef(1);
-    const hyperspaceCooldownRef = useRef(0);
+    const hyperspaceCooldownRef = useRef(0);    
 
     const { beep } = useSynthFX();
+    const { playLaser, playExplosion, playHyperspace } = useSoundFX();
     const heartbeatIntervalRef = useRef(null);
     const isHighRef = useRef(true);
     const initialAsteroidCountRef = useRef(0);
@@ -316,178 +318,6 @@ const Asteroids = () => {
             attempts++;
         }
     };
-
-    //soundeffects 
-    const playLaser = () => {
-        beep(1000, 0.5, 'square', 100);
-    }
-
-    const playExplosion = (type) => {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-        // === Base Parameters per Type, randomness to make variation between explosions ===
-        const rand = (base, variance) => base + (Math.random() - 0.5) * variance;
-
-        const settings = {
-            small: {
-                noiseDecay: rand(0.35, 0.05),
-                filterStart: rand(2200, 200),
-                filterEnd: 700,
-                sub1Freq: rand(300, 20),
-                sub2Freq: rand(340, 20),
-                sub1Gain: 0.5, // increased for balance
-                sub2Gain: 0.25,
-            },
-            medium: {
-                noiseDecay: rand(0.65, 0.1),  // slightly shorter
-                filterStart: rand(1700, 150),
-                filterEnd: 180,
-                sub1Freq: rand(180, 10),
-                sub2Freq: rand(210, 10),
-                sub1Gain: 1.6, // reduced for balance
-                sub2Gain: 0.5,
-            },
-            big: {
-                noiseDecay: rand(1.2, 0.2), // reduced from 1.5
-                filterStart: rand(1400, 100),
-                filterEnd: 120,
-                sub1Freq: rand(110, 10),
-                sub2Freq: rand(142, 10),
-                sub1Gain: 2.0, // reduced from 3
-                sub2Gain: 0.6,
-            },
-        }[type];
-
-        const now = audioCtx.currentTime;
-
-        // White noise
-        const bufferSize = audioCtx.sampleRate * settings.noiseDecay;
-        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            output[i] = Math.random() * 2 - 1;
-        }
-        const whiteNoise = audioCtx.createBufferSource();
-        whiteNoise.buffer = noiseBuffer;
-        whiteNoise.loop = false;
-
-        // Filter
-        const filter = audioCtx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(settings.filterStart, now);
-        filter.frequency.exponentialRampToValueAtTime(settings.filterEnd, now + settings.noiseDecay);
-        filter.Q.setValueAtTime(1.2, now);
-
-        // Gain envelope
-        const gainNode = audioCtx.createGain();
-        gainNode.gain.setValueAtTime(1.5, now);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + settings.noiseDecay);
-
-        // Sub oscillator 1
-        const subOsc1 = audioCtx.createOscillator();
-        subOsc1.type = 'sine';
-        subOsc1.frequency.setValueAtTime(settings.sub1Freq, now);
-        subOsc1.frequency.exponentialRampToValueAtTime(5, now + settings.noiseDecay);
-
-        const subGain1 = audioCtx.createGain();
-        subGain1.gain.setValueAtTime(settings.sub1Gain, now);
-        subGain1.gain.exponentialRampToValueAtTime(0.0001, now + settings.noiseDecay);
-
-        // Sub oscillator 2 (detuned)
-        const subOsc2 = audioCtx.createOscillator();
-        subOsc2.type = 'sine';
-        subOsc2.frequency.setValueAtTime(settings.sub2Freq, now);
-        subOsc2.frequency.exponentialRampToValueAtTime(10, now + settings.noiseDecay);
-
-        const subGain2 = audioCtx.createGain();
-        subGain2.gain.setValueAtTime(settings.sub2Gain, now);
-        subGain2.gain.exponentialRampToValueAtTime(0.0001, now + settings.noiseDecay);
-
-        console.log(type);
-
-        // Create distortion node
-        const distortion = audioCtx.createWaveShaper();
-        const curve = new Float32Array(44100);
-        for (let i = 0; i < curve.length; i++) {
-            const x = (i * 2) / curve.length - 1;
-            curve[i] = (3 + 5) * x * 20 / (Math.PI + 5 * Math.abs(x)); // aggressive curve
-        }
-        distortion.curve = curve;
-        distortion.oversample = '4x';
-
-        // Add reverb
-        const convolver = audioCtx.createConvolver();
-        const reverbBuffer = audioCtx.createBuffer(2, audioCtx.sampleRate * 1.0, audioCtx.sampleRate);
-        for (let channel = 0; channel < 2; channel++) {
-            const data = reverbBuffer.getChannelData(channel);
-            for (let i = 0; i < data.length; i++) {
-                data[i] = (Math.random() * 2 - 1) * (1 - i / data.length); // decay
-            }
-        }
-        convolver.buffer = reverbBuffer;
-
-        const masterGain = audioCtx.createGain();
-        if (type === 'big') masterGain.gain.setValueAtTime(0.4, now);
-        else if (type === 'medium') masterGain.gain.setValueAtTime(0.45, now);
-        else masterGain.gain.setValueAtTime(1.0, now);
-
-        // Connect
-        whiteNoise.connect(filter);
-        filter.connect(gainNode);
-        if (type === 'medium' || type === 'big') {
-            gainNode.connect(distortion);
-            distortion.connect(convolver);
-            convolver.connect(masterGain);
-        } else if (type === 'small') {
-            const lightDistortion = audioCtx.createWaveShaper();
-            const lightCurve = new Float32Array(44100);
-            for (let i = 0; i < lightCurve.length; i++) {
-                const x = (i * 2) / lightCurve.length - 1;
-                lightCurve[i] = x * 10 / (Math.PI + 2 * Math.abs(x)); // gentle curve
-            }
-            lightDistortion.curve = lightCurve;
-            lightDistortion.oversample = '2x';
-
-            const lightReverb = audioCtx.createConvolver();
-            const lightReverbBuffer = audioCtx.createBuffer(2, audioCtx.sampleRate * 0.4, audioCtx.sampleRate);
-            for (let ch = 0; ch < 2; ch++) {
-                const d = lightReverbBuffer.getChannelData(ch);
-                for (let i = 0; i < d.length; i++) {
-                    d[i] = (Math.random() * 2 - 1) * (1 - i / d.length); // subtle decay
-                }
-            }
-            lightReverb.buffer = lightReverbBuffer;
-
-            gainNode.connect(lightDistortion);
-            lightDistortion.connect(lightReverb);
-            lightReverb.connect(masterGain);
-        } else {
-            gainNode.connect(audioCtx.destination);
-        }
-
-        masterGain.connect(audioCtx.destination);
-
-        subOsc1.connect(subGain1);
-        subGain1.connect(audioCtx.destination);
-
-        subOsc2.connect(subGain2);
-        subGain2.connect(audioCtx.destination);
-
-        // Start & stop
-        whiteNoise.start(now);
-        whiteNoise.stop(now + settings.noiseDecay);
-
-        subOsc1.start(now);
-        subOsc1.stop(now + settings.noiseDecay);
-
-        subOsc2.start(now);
-        subOsc2.stop(now + settings.noiseDecay);
-    };
-
-    const playHyperspace = () => {
-        beep(600, 0.7, 'sine', 100);
-        setTimeout(() => beep(800, 0.7, 'sine', 100), 100);
-    }
 
     const startHeartbeat = () => {
         if (heartbeatIntervalRef.current) {
