@@ -36,10 +36,11 @@ const Asteroids = () => {
     const livesRef = useRef(3);
     const gameOverRef = useRef(false);
     const waveRef = useRef(1);
-    const hyperspaceCooldownRef = useRef(0);    
+    const hyperspaceCooldownRef = useRef(0);
 
     const { beep } = useSynthFX();
-    const { playLaser, playExplosion, playHyperspace } = useSoundFX();
+    const { playLaser, playExplosion, playHyperspace, playEngineHum } = useSoundFX();
+    const engineSoundRef = useRef(null);
     const heartbeatIntervalRef = useRef(null);
     const isHighRef = useRef(true);
     const initialAsteroidCountRef = useRef(0);
@@ -468,8 +469,24 @@ const Asteroids = () => {
             } else {
                 ship.rot = 0;
             }
+            
+            const isThrustingNow = keys['ArrowUp'] || false;
 
-            ship.thrusting = keys['ArrowUp'] || false;
+            if (isThrustingNow && !ship.thrusting) {
+                // Just started thrusting — play engine hum
+                ship.thrusting = true;
+                if (!engineSoundRef.current) {
+                    engineSoundRef.current = playEngineHum();
+                }                
+            } else if (!isThrustingNow && ship.thrusting) {
+                // Just stopped thrusting — stop hum
+                ship.thrusting = false;
+                if (engineSoundRef.current) {
+                    engineSoundRef.current.stop();
+                    engineSoundRef.current = null;
+                }
+            }
+
             if (ship.thrusting) {
                 ship.thrust.x += (THRUST * Math.cos(ship.a)) / FPS;
                 ship.thrust.y -= (THRUST * Math.sin(ship.a)) / FPS;
@@ -762,7 +779,6 @@ const Asteroids = () => {
             render();
             animationRef.current = requestAnimationFrame(gameLoop);
         };
-
         animationRef.current = requestAnimationFrame(gameLoop);
 
         return () => {
@@ -770,6 +786,9 @@ const Asteroids = () => {
             window.removeEventListener('keyup', handleKeyUp);
             cancelAnimationFrame(animationRef.current);
             clearInterval(heartbeatIntervalRef.current);
+            if (engineSoundRef.current) {
+                engineSoundRef.current.stop();
+            }
         };
     }, []);
 
