@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useSynthFX from '../hooks/useSynthFX'
+import useSoundFX from '../hooks/useSoundFX';
 
 const FPS = 60;
 const SHIP_SIZE = 30;
@@ -34,7 +36,13 @@ const Asteroids = () => {
     const livesRef = useRef(3);
     const gameOverRef = useRef(false);
     const waveRef = useRef(1);
-    const hyperspaceCooldownRef = useRef(0);
+    const hyperspaceCooldownRef = useRef(0);    
+
+    const { beep } = useSynthFX();
+    const { playLaser, playExplosion, playHyperspace } = useSoundFX();
+    const heartbeatIntervalRef = useRef(null);
+    const isHighRef = useRef(true);
+    const initialAsteroidCountRef = useRef(0);
 
     const shipRef = useRef({
         x: 600,
@@ -68,6 +76,7 @@ const Asteroids = () => {
             });
         };
         asteroidsRef.current = newAsteroids;
+        initialAsteroidCountRef.current = newAsteroids.length;
     }
 
     const destroyAsteroid = (index) => {
@@ -84,6 +93,15 @@ const Asteroids = () => {
             scoreRef.current += 50;
         } else {
             scoreRef.current += 100;
+        }
+
+        //play explosion soundFX
+        if (r > ASTEROID_RADIUS / 2) {
+            playExplosion('big')   // Big asteroids = big boom
+        } else if (r > ASTEROID_RADIUS / 4) {
+            playExplosion('medium')
+        } else {
+            playExplosion('small')
         }
 
         // Split if not small
@@ -109,7 +127,6 @@ const Asteroids = () => {
 
         }
 
-
         // Remove original asteroid
         asteroidsRef.current.splice(index, 1);
 
@@ -117,6 +134,9 @@ const Asteroids = () => {
         if (asteroidsRef.current.length === 0 && !gameOverRef.current) {
             waveRef.current++;
             createAsteroids(canvasRef.current, 5 + waveRef.current); // spawn more each wave
+            startHeartbeat();
+        } else {
+            updateHeartbeatInterval();
         }
     };
 
@@ -277,6 +297,7 @@ const Asteroids = () => {
     const hyperspaceJump = (canvas) => {
         let safe = false;
         let attempts = 0;
+        playHyperspace();
 
         while (!safe && attempts < 100) {
             const newX = Math.random() * canvas.width;
@@ -298,7 +319,39 @@ const Asteroids = () => {
         }
     };
 
-    //debugging purpose
+    const startHeartbeat = () => {
+        if (heartbeatIntervalRef.current) {
+            clearInterval(heartbeatIntervalRef.current); // <- clear old heartbeat
+        }
+
+        const initialInterval = 1000; // start slow
+        heartbeatIntervalRef.current = setInterval(() => {
+            const frequency = isHighRef.current ? 110 : 115;
+            beep(frequency, 0.5, 'square', 100);
+            isHighRef.current = !isHighRef.current;
+        }, initialInterval);
+    };
+
+    const updateHeartbeatInterval = () => {
+        if (heartbeatIntervalRef.current) {
+            clearInterval(heartbeatIntervalRef.current);
+        }
+
+        const remainingAsteroids = asteroidsRef.current.length;
+        const initialAsteroids = initialAsteroidCountRef.current || 1;
+        const maxInterval = 1000; // Slowest heartbeat
+        const minInterval = 200;  // Fastest heartbeat
+        const intervalRange = maxInterval - minInterval;
+        const interval = minInterval + (intervalRange * (remainingAsteroids / initialAsteroids));
+
+        heartbeatIntervalRef.current = setInterval(() => {
+            const frequency = isHighRef.current ? 110 : 115;
+            beep(frequency, 0.5, 'square', 100);
+            isHighRef.current = !isHighRef.current;
+        }, interval);
+    };
+
+    //debugging purpose (draws hitdetectionpolygons)
     const drawPolygon = (ctx, points, color = 'lime') => {
         ctx.save();
         ctx.strokeStyle = color;
@@ -336,6 +389,7 @@ const Asteroids = () => {
                         yVel: -BULLET_SPEED * Math.sin(ship.a),
                         life: BULLET_LIFE,
                     });
+                    playLaser();
                 }
             }
 
@@ -370,6 +424,7 @@ const Asteroids = () => {
                 ship.thrust.x = 0;
                 ship.thrust.y = 0;
                 spawnShipDebris();
+                playExplosion('big');
                 return;
             }
 
@@ -693,6 +748,8 @@ const Asteroids = () => {
             }
         };
 
+        startHeartbeat();
+
         const gameLoop = () => {
             updateShip();
             updateBullets();
@@ -712,6 +769,7 @@ const Asteroids = () => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
             cancelAnimationFrame(animationRef.current);
+            clearInterval(heartbeatIntervalRef.current);
         };
     }, []);
 
