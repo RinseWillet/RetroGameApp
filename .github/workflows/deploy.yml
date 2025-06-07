@@ -38,4 +38,4 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        tags: yourdockerhubusername/retrogameapp:latest
+        tags: rinsedev/retrogameapp:latest
