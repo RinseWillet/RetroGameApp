@@ -9,10 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    - name: Run placeholder test
-      run: echo "Tests will run here soon 🚀"
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
 
-  #     - name: Run tests
-  # run: npm ci && npm run test
+    - run: npm ci
+    - run: npx vitest run
