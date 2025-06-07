@@ -60,3 +60,4 @@ jobs:
         nas-username: ${{ secrets.NAS_USERNAME }}
         nas-ssh-key: ${{ secrets.NAS_SSH_PRIVATE_KEY }}
         nas-target-dir: ${{ secrets.NAS_TARGET_DIR }}
+        nas-ssh-port: ${{ secrets.NAS_SSH_PORT }}

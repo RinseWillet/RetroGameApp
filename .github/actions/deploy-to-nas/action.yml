@@ -16,6 +16,8 @@ inputs:
     required: true
   nas-target-dir:
     required: true
+  nas-ssh-port:
+    required: true   
 
 runs:
   using: "composite"
@@ -26,7 +28,7 @@ runs:
         mkdir -p ~/.ssh
         echo "${{ inputs.nas-ssh-key }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ inputs.nas-host }} >> ~/.ssh/known_hosts
+        ssh-keyscan -p ${{ inputs.nas-ssh-port }} -H ${{ inputs.nas-host }} >> ~/.ssh/known_hosts
 
     - name: Save Docker image to tar
       shell: bash
@@ -36,12 +38,12 @@ runs:
     - name: Copy image to NAS via scp
       shell: bash
       run: |
-        scp image.tar ${{ inputs.nas-username }}@${{ inputs.nas-host }}:${{ inputs.nas-target-dir }}/image.tar
+        scp -P ${{ inputs.nas-ssh-port }} image.tar ${{ inputs.nas-username }}@${{ inputs.nas-host }}:${{ inputs.nas-target-dir }}/image.tar
 
     - name: SSH into NAS and deploy
       shell: bash
       run: |
-        ssh ${{ inputs.nas-username }}@${{ inputs.nas-host }} "
+        ssh -p ${{ inputs.nas-ssh-port }} ${{ inputs.nas-username }}@${{ inputs.nas-host }} "
           cd '${{ inputs.nas-target-dir }}'
 
           echo '[📦] Backing up old image...'
