@@ -41,9 +41,14 @@ const Asteroids = () => {
     const { beep } = useSynthFX();
     const { playLaser, playExplosion, playHyperspace, playEngineHum } = useSoundFX();
     const engineSoundRef = useRef(null);
-    const heartbeatIntervalRef = useRef(null);
+        
+    //variables for the hearbeat soundFX
     const isHighRef = useRef(true);
     const initialAsteroidCountRef = useRef(0);
+    const heartbeatIntervalRef = useRef(null);
+    const maxInterval = 1000; 
+    const minInterval = 100;
+    const currentHeartbeatIntervalRef = useRef(maxInterval);
 
     const shipRef = useRef({
         x: 600,
@@ -325,7 +330,10 @@ const Asteroids = () => {
             clearInterval(heartbeatIntervalRef.current); // <- clear old heartbeat
         }
 
-        const initialInterval = 1000; // start slow
+        //reset hearbeatfrequency to start/slow frequency
+        const initialInterval = maxInterval;
+        currentHeartbeatIntervalRef.current = maxInterval;
+
         heartbeatIntervalRef.current = setInterval(() => {
             const frequency = isHighRef.current ? 110 : 115;
             beep(frequency, 0.5, 'square', 100);
@@ -340,16 +348,20 @@ const Asteroids = () => {
 
         const remainingAsteroids = asteroidsRef.current.length;
         const initialAsteroids = initialAsteroidCountRef.current || 1;
-        const maxInterval = 1000; // Slowest heartbeat
-        const minInterval = 200;  // Fastest heartbeat
+       
         const intervalRange = maxInterval - minInterval;
-        const interval = minInterval + (intervalRange * (remainingAsteroids / initialAsteroids));
+
+        let newInterval = minInterval + (intervalRange * (remainingAsteroids / initialAsteroids));
+        newInterval = Math.max(minInterval, Math.min(newInterval, currentHeartbeatIntervalRef.current)); // clamp
+
+        currentHeartbeatIntervalRef.current = newInterval; // save latest used value
+        // const interval = minInterval + (intervalRange * (remainingAsteroids / initialAsteroids));
 
         heartbeatIntervalRef.current = setInterval(() => {
             const frequency = isHighRef.current ? 110 : 115;
             beep(frequency, 0.5, 'square', 100);
             isHighRef.current = !isHighRef.current;
-        }, interval);
+        }, newInterval);
     };
 
     //debugging purpose (draws hitdetectionpolygons)
