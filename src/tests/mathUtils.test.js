@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dist, wrapAround } from './src/games/asteroids/utils/mathUtils';
+import { dist, wrapAround } from '../games/asteroids/utils/mathUtils';
 
 describe('dist', () => {
   it('computes the distance between two points correctly', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pointInPolygon, polygonsIntersect } from './src/games/asteroids/utils/collisionUtils';
+import { pointInPolygon, polygonsIntersect } from '../games/asteroids/utils/collisionUtils';
 
 describe('pointInPolygon', () => {
   const square = [
