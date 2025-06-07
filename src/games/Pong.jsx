@@ -8,6 +8,7 @@ const Pong = () => {
   const keysDownRef = useRef({});
   const animationRef = useRef(null);
   const gameStartedRef = useRef(false);
+  const gameOverRef = useRef(false);
   const { beep } = useSynthFX();
 
 
@@ -16,6 +17,7 @@ const Pong = () => {
     const ctx = canvas.getContext('2d');
     const width = canvas.width = 1200;
     const height = canvas.height = 800;
+    let allowRestart = true;
 
     // --- Game Classes ---
     class Paddle {
@@ -179,20 +181,22 @@ const Pong = () => {
       computer.render();
       ball.render();
 
-      if (!gameStartedRef.current) {
-        // Draw "Press Space to Start" if game not started
+      if (!gameStartedRef.current) { 
         ctx.font = "50px 'Press Start 2P', monospace";
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
-        ctx.fillText("Press SPACE to Start", width / 2, height / 2);
         ctx.textAlign = "center";
 
-        if (player.paddle.score >= 10) {
-          ctx.fillText("PLAYER WINS!", width / 2, height / 2);
-        } else if (computer.paddle.score >= 10) {
-          ctx.fillText("COMPUTER WINS!", width / 2, height / 2);
+        if(gameOverRef.current){ 
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
+          if (player.paddle.score >= 10) {
+            ctx.fillText("PLAYER WINS!", width / 2, height / 2);
+          } else if (computer.paddle.score >= 10) {
+            ctx.fillText("COMPUTER WINS!", width / 2, height / 2);
+          }
         } else {
+          // Draw "Press Space to Start" if game not started
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
           ctx.fillText("Press SPACE to Start", width / 2, height / 2);
-        }
+        }      
       }
 
       // --- Subtle CRT Scanlines ---
@@ -210,14 +214,18 @@ const Pong = () => {
       ball.update(player.paddle, computer.paddle);
 
       // Check if someone reached 10 points
-      if (player.paddle.score >= 10 || computer.paddle.score >= 10) {
+      if (player.paddle.score >= 10 || computer.paddle.score >= 10) {        
         gameStartedRef.current = false; // stop updating the game
+        gameOverRef.current = true
+        allowRestart = false;
         beep(1000, 0.5, 'triangle'); // victory sound!
 
         // After 3 seconds, reset the scores
         setTimeout(() => {
           player.paddle.score = 0;
           computer.paddle.score = 0;
+          gameOverRef.current = false;
+          allowRestart = true;
         }, 3000);
       }
     }
@@ -235,10 +243,14 @@ const Pong = () => {
 
     // --- Clean up ---
     const handleKeyDown = (e) => {
-      if (!gameStartedRef.current && e.code === 'Space') {
+      if (!gameStartedRef.current && !gameOverRef.current && allowRestart && e.code === 'Space') {
         gameStartedRef.current = true;
         player.paddle.score = 0;
         computer.paddle.score = 0;
+        ball.x = width / 2;
+        ball.y = height / 2;
+        ball.x_speed = -7;
+        ball.y_speed = 0;
         beep(800, 0.5, 'triangle');
       }
       keysDownRef.current[e.code] = true;
