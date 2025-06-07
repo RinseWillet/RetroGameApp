@@ -56,3 +56,7 @@ jobs:
         image-name: retrogameapp
         tag: ${{ steps.vars.outputs.tag }}
         container-name: ${{ secrets.DOCKER_CONTAINER_NAME }}
+        nas-host: ${{ secrets.NAS_HOST }}
+        nas-username: ${{ secrets.NAS_USERNAME }}
+        nas-ssh-key: ${{ secrets.NAS_SSH_PRIVATE_KEY }}
+        nas-target-dir: ${{ secrets.NAS_TARGET_DIR }}
