@@ -1,0 +1,20 @@
+name: 🔐 SSH Test to Synology NAS
+
+on:
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  test-ssh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.NAS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.NAS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Connect to NAS and run test command
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.NAS_USERNAME }}@${{ secrets.NAS_HOST }} "echo '✅ SSH worked!' && uname -a && docker --version"
