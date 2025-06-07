@@ -60,10 +60,7 @@ const useAsteroidsGame = (canvasRef) => {
     const currentHeartbeatIntervalRef = useRef(1000);
 
     const startHeartbeat = () => {
-        if (heartbeatIntervalRef.current) {
-            clearInterval(heartbeatIntervalRef.current);
-        }
-
+        if (heartbeatIntervalRef.current) return; // already running
         const interval = currentHeartbeatIntervalRef.current;
 
         heartbeatIntervalRef.current = setInterval(() => {
@@ -352,7 +349,7 @@ const useAsteroidsGame = (canvasRef) => {
             );
 
             // End wave logic
-            if (asteroidsRef.current.length === 0 && !gameOverRef.current) {
+            if (startedRef.current && asteroidsRef.current.length === 0 && !gameOverRef.current) {
                 waveRef.current++;
 
                 createAsteroids(canvas, asteroidsRef, waveRef, 5 + waveRef.current);
@@ -428,6 +425,7 @@ const useAsteroidsGame = (canvasRef) => {
             window.removeEventListener('keyup', handleKeyUp);
             cancelAnimationFrame(animationRef.current);
             clearInterval(heartbeatIntervalRef.current);
+            heartbeatIntervalRef.current = null;
             if (engineSoundRef.current) engineSoundRef.current.stop();
         };
     }, [canvasRef]);
