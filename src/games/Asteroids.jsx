@@ -41,12 +41,12 @@ const Asteroids = () => {
     const { beep } = useSynthFX();
     const { playLaser, playExplosion, playHyperspace, playEngineHum } = useSoundFX();
     const engineSoundRef = useRef(null);
-        
+
     //variables for the hearbeat soundFX
     const isHighRef = useRef(true);
     const initialAsteroidCountRef = useRef(0);
     const heartbeatIntervalRef = useRef(null);
-    const maxInterval = 1000; 
+    const maxInterval = 1000;
     const minInterval = 100;
     const currentHeartbeatIntervalRef = useRef(maxInterval);
 
@@ -348,14 +348,14 @@ const Asteroids = () => {
 
         const remainingAsteroids = asteroidsRef.current.length;
         const initialAsteroids = initialAsteroidCountRef.current || 1;
-       
+
         const intervalRange = maxInterval - minInterval;
 
-        let newInterval = minInterval + (intervalRange * (remainingAsteroids / initialAsteroids));
+        const ratio = remainingAsteroids / initialAsteroids;
+        let newInterval = minInterval + intervalRange * Math.pow(ratio, 2);
         newInterval = Math.max(minInterval, Math.min(newInterval, currentHeartbeatIntervalRef.current)); // clamp
 
-        currentHeartbeatIntervalRef.current = newInterval; // save latest used value
-        // const interval = minInterval + (intervalRange * (remainingAsteroids / initialAsteroids));
+        currentHeartbeatIntervalRef.current = newInterval; // save latest used value     
 
         heartbeatIntervalRef.current = setInterval(() => {
             const frequency = isHighRef.current ? 110 : 115;
@@ -481,7 +481,7 @@ const Asteroids = () => {
             } else {
                 ship.rot = 0;
             }
-            
+
             const isThrustingNow = keys['ArrowUp'] || false;
 
             if (isThrustingNow && !ship.thrusting) {
@@ -489,7 +489,7 @@ const Asteroids = () => {
                 ship.thrusting = true;
                 if (!engineSoundRef.current) {
                     engineSoundRef.current = playEngineHum();
-                }                
+                }
             } else if (!isThrustingNow && ship.thrusting) {
                 // Just stopped thrusting — stop hum
                 ship.thrusting = false;
