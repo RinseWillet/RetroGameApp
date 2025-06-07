@@ -8,14 +8,29 @@ const Pong = () => {
   const keysDownRef = useRef({});
   const animationRef = useRef(null);
   const gameStartedRef = useRef(false);
+  const gameOverRef = useRef(false);
   const { beep } = useSynthFX();
 
 
   useEffect(() => {    
     const canvas = canvasRef.current;
+    canvas.focus();
+    
     const ctx = canvas.getContext('2d');
     const width = canvas.width = 1200;
     const height = canvas.height = 800;
+
+    //these lines make sure that the buttons pressed for playing the game
+    //do not accidentally trigger the back to main page button
+    canvas.focus();
+    const handleCanvasClick = () => {
+      canvas.focus();
+    };
+    
+    canvas.addEventListener('click', handleCanvasClick);
+
+    //boolean to create a small delay between gameover and restart
+    let allowRestart = true;
 
     // --- Game Classes ---
     class Paddle {
@@ -179,20 +194,22 @@ const Pong = () => {
       computer.render();
       ball.render();
 
-      if (!gameStartedRef.current) {
-        // Draw "Press Space to Start" if game not started
+      if (!gameStartedRef.current) { 
         ctx.font = "50px 'Press Start 2P', monospace";
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
-        ctx.fillText("Press SPACE to Start", width / 2, height / 2);
         ctx.textAlign = "center";
 
-        if (player.paddle.score >= 10) {
-          ctx.fillText("PLAYER WINS!", width / 2, height / 2);
-        } else if (computer.paddle.score >= 10) {
-          ctx.fillText("COMPUTER WINS!", width / 2, height / 2);
+        if(gameOverRef.current){ 
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
+          if (player.paddle.score >= 10) {
+            ctx.fillText("PLAYER WINS!", width / 2, height / 2);
+          } else if (computer.paddle.score >= 10) {
+            ctx.fillText("COMPUTER WINS!", width / 2, height / 2);
+          }
         } else {
+          // Draw "Press Space to Start" if game not started
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
           ctx.fillText("Press SPACE to Start", width / 2, height / 2);
-        }
+        }      
       }
 
       // --- Subtle CRT Scanlines ---
@@ -210,14 +227,18 @@ const Pong = () => {
       ball.update(player.paddle, computer.paddle);
 
       // Check if someone reached 10 points
-      if (player.paddle.score >= 10 || computer.paddle.score >= 10) {
+      if (player.paddle.score >= 10 || computer.paddle.score >= 10) {        
         gameStartedRef.current = false; // stop updating the game
+        gameOverRef.current = true
+        allowRestart = false;
         beep(1000, 0.5, 'triangle'); // victory sound!
 
         // After 3 seconds, reset the scores
         setTimeout(() => {
           player.paddle.score = 0;
           computer.paddle.score = 0;
+          gameOverRef.current = false;
+          allowRestart = true;
         }, 3000);
       }
     }
@@ -235,10 +256,18 @@ const Pong = () => {
 
     // --- Clean up ---
     const handleKeyDown = (e) => {
-      if (!gameStartedRef.current && e.code === 'Space') {
+      if (e.code === 'Space') {
+        e.preventDefault(); // prevent scrolling or triggering focused buttons
+      }
+
+      if (!gameStartedRef.current && !gameOverRef.current && allowRestart && e.code === 'Space') {
         gameStartedRef.current = true;
         player.paddle.score = 0;
         computer.paddle.score = 0;
+        ball.x = width / 2;
+        ball.y = height / 2;
+        ball.x_speed = -7;
+        ball.y_speed = 0;
         beep(800, 0.5, 'triangle');
       }
       keysDownRef.current[e.code] = true;
@@ -252,6 +281,7 @@ const Pong = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      canvas.removeEventListener("click", handleCanvasClick);
       cancelAnimationFrame(animationRef.current);
     }
   }, []);
@@ -266,9 +296,10 @@ const Pong = () => {
       <h1 className="text-4xl font-bold text-pink-400 mb-6 neon-text z-10">Pong</h1>
       <canvas
         ref={canvasRef}
+        tabIndex={0} // <- this ensures focus for keyup and keydown on the canvas
         width={1200}
         height={800}
-        className="border-4 border-pink-500 bg-black z-10"
+        className="border-4 border-pink-500 bg-black z-10 focus:outline-none"
       />
       <button
         onClick={() => navigate('/')}

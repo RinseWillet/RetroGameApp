@@ -220,7 +220,79 @@ const useSoundFX = () => {
         };
     };
 
-    return { playLaser, playExplosion, playHyperspace };
+    const playEngineHum = () => {
+        const audioCtx = getAudioContext();
+        const now = audioCtx.currentTime;
+    
+        // === Oscillator 1: Deep rumble ===
+        const osc1 = audioCtx.createOscillator();
+        osc1.type = 'triangle';
+        osc1.frequency.setValueAtTime(40, now); // very deep
+    
+        // === Oscillator 2: midrange engine texture ===
+        const osc2 = audioCtx.createOscillator();
+        osc2.type = 'sawtooth';
+        osc2.frequency.setValueAtTime(70, now); // blends with osc1
+    
+        // === Subtle LFO for pulsing/texture ===
+        const lfo = audioCtx.createOscillator();
+        lfo.frequency.setValueAtTime(3.5, now); // pulse rate
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.setValueAtTime(0.25, now); // pulse intensity
+    
+        // === Engine Gain Node ===
+        const engineGain = audioCtx.createGain();
+        engineGain.gain.setValueAtTime(0.6, now); // base volume
+    
+        // === Filter to remove harsh highs ===
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(200, now); // muffles higher freqs
+    
+        // === Optional Distortion for grit ===
+        const distortion = audioCtx.createWaveShaper();
+        const curve = new Float32Array(44100);
+        for (let i = 0; i < curve.length; i++) {
+            const x = (i * 2) / curve.length - 1;
+            curve[i] = x * 10 / (Math.PI + Math.abs(x)); // moderate curve
+        }
+        distortion.curve = curve;
+        distortion.oversample = '2x';
+    
+        // === Connect nodes ===
+        lfo.connect(lfoGain);
+        lfoGain.connect(engineGain.gain); // LFO modulates volume
+    
+        osc1.connect(engineGain);
+        osc2.connect(engineGain);
+        engineGain.connect(filter);
+        filter.connect(distortion);
+        distortion.connect(audioCtx.destination);
+    
+        // === Start oscillators ===
+        osc1.start(now);
+        osc2.start(now);
+        lfo.start(now);
+    
+        // === Return stop method for cleanup ===
+        return {
+            stop: () => {
+                osc1.stop();
+                osc2.stop();
+                lfo.stop();
+    
+                osc1.disconnect();
+                osc2.disconnect();
+                lfo.disconnect();
+                lfoGain.disconnect();
+                engineGain.disconnect();
+                filter.disconnect();
+                distortion.disconnect();
+            }
+        };
+    };
+
+    return { playLaser, playExplosion, playHyperspace, playEngineHum };
 };
 
 export default useSoundFX;
