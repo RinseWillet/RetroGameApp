@@ -1,0 +1,67 @@
+name: "Deploy to Synology NAS with Rollback"
+description: "Transfers Docker image to NAS, restarts container, and rolls back on failure"
+
+inputs:
+  image-name:
+    required: true
+  tag:
+    required: true
+  container-name:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up SSH key
+      shell: bash
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.NAS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.NAS_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Save Docker image to tar
+      shell: bash
+      run: |
+        docker save ${{ inputs.image-name }}:${{ inputs.tag }} -o image.tar
+
+    - name: Copy image to NAS via scp
+      shell: bash
+      run: |
+        scp image.tar ${{ secrets.NAS_USERNAME }}@${{ secrets.NAS_HOST }}:${{ secrets.NAS_TARGET_DIR }}/image.tar
+
+    - name: SSH into NAS and deploy with rollback
+      shell: bash
+      run: |
+        ssh ${{ secrets.NAS_USERNAME }}@${{ secrets.NAS_HOST }} << 'EOF'
+          cd ${{ secrets.NAS_TARGET_DIR }}
+
+          echo "[📦] Backing up old image..."
+          docker commit ${{ inputs.container-name }} ${inputs.container-name}:backup || echo "No existing container to backup"
+
+          echo "[✅] Loading new image..."
+          docker load < image.tar
+
+          echo "[⛔] Stopping old container..."
+          docker stop ${{ inputs.container-name }} || true
+          docker rm ${{ inputs.container-name }} || true
+
+          echo "[🚀] Starting new container..."
+          docker run -d \
+            --name ${{ inputs.container-name }} \
+            -p 3000:3000 \
+            ${{ inputs.image-name }}:${{ inputs.tag }}
+
+          echo "[🔍] Verifying container is running..."
+          sleep 5
+          if ! docker ps --filter "name=${{ inputs.container-name }}" --filter "status=running" | grep ${{ inputs.container-name }}; then
+            echo "[⚠️  ERROR] New container failed. Rolling back..."
+            docker rm -f ${{ inputs.container-name }} || true
+            docker run -d \
+              --name ${{ inputs.container-name }} \
+              -p 3000:3000 \
+              ${inputs.container-name}:backup
+          else
+            echo "[✅] New container is running."
+          fi
+        EOF
