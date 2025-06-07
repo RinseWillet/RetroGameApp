@@ -49,7 +49,7 @@ runs:
           echo "[🚀] Starting new container..."
           docker run -d \
             --name ${{ inputs.container-name }} \
-            -p 3000:3000 \
+            -p 1982:80 \
             ${{ inputs.image-name }}:${{ inputs.tag }}
 
           echo "[🔍] Verifying container is running..."
@@ -59,7 +59,7 @@ runs:
             docker rm -f ${{ inputs.container-name }} || true
             docker run -d \
               --name ${{ inputs.container-name }} \
-              -p 3000:3000 \
+              -p 1982:80 \
               ${inputs.container-name}:backup
           else
             echo "[✅] New container is running."
