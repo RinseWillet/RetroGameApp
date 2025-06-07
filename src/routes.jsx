@@ -1,5 +1,5 @@
 import Home from './pages/Home'
-import Pong from './games/Pong'
+import Pong from './games/pong/Pong'
 import Asteroids from './games/Asteroids'
 import NotFound from './pages/NotFound'
 
