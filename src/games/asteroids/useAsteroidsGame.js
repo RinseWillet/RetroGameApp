@@ -11,6 +11,8 @@ import drawShip from './draw/drawShip';
 import drawUI from './draw/drawUI';
 import drawParticles from './draw/drawParticles';
 import drawShipDebris from './draw/drawShipDebris';
+import { splitAsteroid } from './logic/splitAsteroid';
+import { scoreForRadius } from './logic/scoreForRadius';
 
 const FPS = 60;
 const SHIP_SIZE = 30;
@@ -99,11 +101,11 @@ const useAsteroidsGame = (canvasRef) => {
         let safe = false;
         let attempts = 0;
         playHyperspace();
-    
+
         while (!safe && attempts < 100) {
             const newX = Math.random() * canvas.width;
             const newY = Math.random() * canvas.height;
-    
+
             safe = true;
             for (const asteroid of asteroidsRef.current) {
                 const d = dist(newX, newY, asteroid.x, asteroid.y);
@@ -112,7 +114,7 @@ const useAsteroidsGame = (canvasRef) => {
                     break;
                 }
             }
-    
+
             if (safe) {
                 shipRef.current.x = newX;
                 shipRef.current.y = newY;
@@ -148,7 +150,7 @@ const useAsteroidsGame = (canvasRef) => {
 
             if (e.code === 'KeyR' && gameOverRef.current) {
                 window.location.reload(); // or a cleaner reset logic later
-            }            
+            }
 
 
             if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && startedRef.current) {
@@ -161,7 +163,7 @@ const useAsteroidsGame = (canvasRef) => {
                     hyperspaceCooldownRef.current = HYPERSPACE_COOLDOWN;
                 }
             }
-            
+
             if (!startedRef.current) {
                 startedRef.current = true;
 
@@ -316,20 +318,18 @@ const useAsteroidsGame = (canvasRef) => {
                     const asteroid = asteroidsRef.current[j];
                     const poly = getAsteroidPolygon(asteroid);
                     if (pointInPolygon({ x: bullet.x, y: bullet.y }, poly)) {
+
                         // Split asteroid or spawn particles
                         const r = asteroid.r;
-                        scoreRef.current += r > 50 ? 20 : r > 25 ? 50 : 100;
+
+                        // Scoring and explosion sound based on radius
+                        scoreRef.current += scoreForRadius(r);
                         playExplosion(r > 50 ? 'big' : r > 25 ? 'medium' : 'small');
 
-                        if (r > 25) {
-                            for (let k = 0; k < 2; k++) {
-                                asteroidsRef.current.push({
-                                    ...asteroid,
-                                    r: r / 2,
-                                    xVel: (Math.random() - 0.5) * 2 * 50 / 60,
-                                    yVel: (Math.random() - 0.5) * 2 * 50 / 60
-                                });
-                            }
+                        // Split or spawn particles
+                        const children = splitAsteroid(asteroid);
+                        if (children.length > 0) {
+                            asteroidsRef.current.push(...children);
                         } else {
                             particlesRef.current.push(...spawnParticles(asteroid.x, asteroid.y));
                         }
