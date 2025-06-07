@@ -1,14 +1,9 @@
 import { useRef } from 'react'
+import { getAudioContext } from '../audio/audioCTX';
 
 const useSynthFX = () => {
-  const audioCtxRef = useRef(null)
-
-  if (!audioCtxRef.current) {
-    audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
-  }
-
   const beep = (frequency = 440, volume = 1, type = 'sine', duration = 100) => {
-    const audioCtx = audioCtxRef.current
+    const audioCtx = getAudioContext();
     const oscillator = audioCtx.createOscillator()
     const gainNode = audioCtx.createGain()
 
