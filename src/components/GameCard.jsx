@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { gameCardClass } from '../styles/gameCardStyles';
+import { gameCardClass, gameCardTitleClass, gameCardDescriptionClass } from '../styles/gameCardStyles';
 
 const GameCard = ({ title, description, onClick }) => {
   return (
