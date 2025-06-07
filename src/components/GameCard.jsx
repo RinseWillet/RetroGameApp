@@ -1,13 +1,25 @@
+import PropTypes from "prop-types";
+import { gameCardClass, gameCardTitleClass, gameCardDescriptionClass } from '../styles/gameCardStyles';
+
 const GameCard = ({ title, description, onClick }) => {
   return (
     <div
       onClick={onClick}
-      className="cursor-pointer bg-black border border-pink-500 p-6 rounded-xl hover:bg-pink-900/20 hover:scale-105 transition-all duration-300 text-center shadow-md shadow-pink-800/30"
+      role="button"
+      tabIndex="0"
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
+      className={gameCardClass}
     >
-      <h3 className="text-pink-400 text-xl font-bold mb-2 neon-text">{title}</h3>
-      <p className="text-pink-200 text-sm">{description}</p>
+      <h3 className={gameCardTitleClass}>{title}</h3>
+      <p className={gameCardDescriptionClass}>{description}</p>
     </div>
   )
+}
+
+GameCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  description: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
 }
 
 export default GameCard
