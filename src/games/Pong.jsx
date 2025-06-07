@@ -14,9 +14,22 @@ const Pong = () => {
 
   useEffect(() => {    
     const canvas = canvasRef.current;
+    canvas.focus();
+    
     const ctx = canvas.getContext('2d');
     const width = canvas.width = 1200;
     const height = canvas.height = 800;
+
+    //these lines make sure that the buttons pressed for playing the game
+    //do not accidentally trigger the back to main page button
+    canvas.focus();
+    const handleCanvasClick = () => {
+      canvas.focus();
+    };
+    
+    canvas.addEventListener('click', handleCanvasClick);
+
+    //boolean to create a small delay between gameover and restart
     let allowRestart = true;
 
     // --- Game Classes ---
@@ -243,6 +256,10 @@ const Pong = () => {
 
     // --- Clean up ---
     const handleKeyDown = (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault(); // prevent scrolling or triggering focused buttons
+      }
+
       if (!gameStartedRef.current && !gameOverRef.current && allowRestart && e.code === 'Space') {
         gameStartedRef.current = true;
         player.paddle.score = 0;
@@ -264,6 +281,7 @@ const Pong = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      canvas.removeEventListener("click", handleCanvasClick);
       cancelAnimationFrame(animationRef.current);
     }
   }, []);
@@ -278,9 +296,10 @@ const Pong = () => {
       <h1 className="text-4xl font-bold text-pink-400 mb-6 neon-text z-10">Pong</h1>
       <canvas
         ref={canvasRef}
+        tabIndex={0} // <- this ensures focus for keyup and keydown on the canvas
         width={1200}
         height={800}
-        className="border-4 border-pink-500 bg-black z-10"
+        className="border-4 border-pink-500 bg-black z-10 focus:outline-none"
       />
       <button
         onClick={() => navigate('/')}
