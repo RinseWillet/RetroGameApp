@@ -8,6 +8,14 @@ inputs:
     required: true
   container-name:
     required: true
+  nas-host:
+    required: true
+  nas-username:
+    required: true
+  nas-ssh-key:
+    required: true
+  nas-target-dir:
+    required: true
 
 runs:
   using: "composite"
@@ -16,9 +24,9 @@ runs:
       shell: bash
       run: |
         mkdir -p ~/.ssh
-        echo "${{ secrets.NAS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        echo "${{ inputs.nas-ssh-key }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.NAS_HOST }} >> ~/.ssh/known_hosts
+        ssh-keyscan -H ${{ inputs.nas-host }} >> ~/.ssh/known_hosts
 
     - name: Save Docker image to tar
       shell: bash
@@ -28,40 +36,40 @@ runs:
     - name: Copy image to NAS via scp
       shell: bash
       run: |
-        scp image.tar ${{ secrets.NAS_USERNAME }}@${{ secrets.NAS_HOST }}:${{ secrets.NAS_TARGET_DIR }}/image.tar
+        scp image.tar ${{ inputs.nas-username }}@${{ inputs.nas-host }}:${{ inputs.nas-target-dir }}/image.tar
 
-    - name: SSH into NAS and deploy with rollback
+    - name: SSH into NAS and deploy
       shell: bash
       run: |
-        ssh ${{ secrets.NAS_USERNAME }}@${{ secrets.NAS_HOST }} << 'EOF'
-          cd ${{ secrets.NAS_TARGET_DIR }}
+        ssh ${{ inputs.nas-username }}@${{ inputs.nas-host }} "
+          cd '${{ inputs.nas-target-dir }}'
 
-          echo "[📦] Backing up old image..."
-          docker commit ${{ inputs.container-name }} ${inputs.container-name}:backup || echo "No existing container to backup"
+          echo '[📦] Backing up old image...'
+          docker commit ${{ inputs.container-name }} ${inputs.container-name}:backup || echo 'No existing container to backup'
 
-          echo "[✅] Loading new image..."
+          echo '[✅] Loading new image...'
           docker load < image.tar
 
-          echo "[⛔] Stopping old container..."
+          echo '[⛔] Stopping old container...'
           docker stop ${{ inputs.container-name }} || true
           docker rm ${{ inputs.container-name }} || true
 
-          echo "[🚀] Starting new container..."
+          echo '[🚀] Starting new container...'
           docker run -d \
             --name ${{ inputs.container-name }} \
             -p 1982:80 \
             ${{ inputs.image-name }}:${{ inputs.tag }}
 
-          echo "[🔍] Verifying container is running..."
+          echo '[🔍] Verifying container is running...'
           sleep 5
-          if ! docker ps --filter "name=${{ inputs.container-name }}" --filter "status=running" | grep ${{ inputs.container-name }}; then
-            echo "[⚠️  ERROR] New container failed. Rolling back..."
+          if ! docker ps --filter 'name=${{ inputs.container-name }}' --filter 'status=running' | grep ${{ inputs.container-name }}; then
+            echo '[⚠️  ERROR] New container failed. Rolling back...'
             docker rm -f ${{ inputs.container-name }} || true
             docker run -d \
               --name ${{ inputs.container-name }} \
               -p 1982:80 \
               ${inputs.container-name}:backup
           else
-            echo "[✅] New container is running."
+            echo '[✅] New container is running.'
           fi
-        EOF
+        "
