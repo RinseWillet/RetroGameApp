@@ -45,8 +45,8 @@ const usePongGame = (canvasRef) => {
       ctx.font = "40px 'Press Start 2P', monospace";
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
-      ctx.fillText(player.paddle.score, CANVAS_WIDTH / 4, 50);
-      ctx.fillText(computer.paddle.score, CANVAS_WIDTH * 3 / 4, 50);
+      ctx.fillText(computer.paddle.score, CANVAS_WIDTH / 4, 50);
+      ctx.fillText(player.paddle.score, CANVAS_WIDTH * 3 / 4, 50);
     };
 
     const drawScanlines = () => {
