@@ -1,7 +1,6 @@
 import Home from './pages/Home'
 import Pong from './games/pong/Pong'
 import Asteroids from './games/asteroids/Asteroids'
-// import Asteroids from './games/Asteroids'
 import NotFound from './pages/NotFound'
 
 export const ROUTES = [

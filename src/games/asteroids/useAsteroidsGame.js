@@ -366,14 +366,16 @@ const useAsteroidsGame = (canvasRef) => {
         };
 
         const render = () => {
+            const pulse = 0.75 + 0.25 * Math.sin(Date.now() / 700);
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = `rgba(255, 255, 255, ${pulse.toFixed(2)})`;
 
             if (!startedRef.current) {
                 ctx.fillStyle = 'black';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
-                ctx.font = '40px "Press Start 2P"';
+                ctx.font = '50px "Press Start 2P"';
                 ctx.textAlign = 'center';
                 ctx.fillText('Press Any Key to Start', canvas.width / 2, canvas.height / 2);
                 return;

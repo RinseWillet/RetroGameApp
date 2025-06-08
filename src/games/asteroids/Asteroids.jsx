@@ -9,7 +9,7 @@ const Asteroids = () => {
     useAsteroidsGame(canvasRef);
 
     return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+        <div className="h-screen bg-black flex flex-col items-center justify-center">
             <h1 className="text-4xl font-bold text-pink-400 mb-6 neon-text">Asteroids</h1>
             <canvas
                 ref={canvasRef}

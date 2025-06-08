@@ -9,7 +9,7 @@ const Pong = () => {
   usePongGame(canvasRef);
 
   return (
-    <div className="relative min-h-screen bg-black flex flex-col items-center justify-center">
+    <div className="relative h-screen bg-black flex flex-col items-center justify-center">
       <div className="absolute inset-0 z-0 animate-stars pointer-events-none" />
       <h1 className="text-4xl font-bold text-pink-400 mb-6 neon-text z-10">Pong</h1>
 
