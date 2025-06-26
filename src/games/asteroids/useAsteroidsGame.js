@@ -1,18 +1,20 @@
-import { useEffect, useRef } from 'react';
+import {useEffect, useRef} from 'react';
 import useSynthFX from '../../hooks/useSynthFX';
 import useSoundFX from '../../hooks/useSoundFX';
-import { wrapAround, dist } from './utils/mathUtils'
-import { pointInPolygon, polygonsIntersect } from './utils/collisionUtils';
-import { getAsteroidPolygon, getShipPolygon } from './entities/getPolygons';
+import {dist, wrapAround} from './utils/mathUtils';
+import {pointInPolygon, polygonsIntersect} from './utils/collisionUtils';
+import {getAsteroidPolygon, getShipPolygon} from './entities/getPolygons';
 import createAsteroids from './entities/createAsteroids';
-import { spawnParticles, spawnShipDebris } from './entities/debris';
+import createUFO from './entities/createUFO.js';
+import drawUFO from './draw/drawUFO.js';
+import {spawnParticles, spawnShipDebris} from './entities/debris';
 import drawAsteroid from './draw/drawAsteroid';
 import drawShip from './draw/drawShip';
 import drawUI from './draw/drawUI';
 import drawParticles from './draw/drawParticles';
 import drawShipDebris from './draw/drawShipDebris';
-import { splitAsteroid } from './logic/splitAsteroid';
-import { scoreForRadius } from './logic/scoreForRadius';
+import {splitAsteroid} from './logic/splitAsteroid';
+import {scoreForRadius} from './logic/scoreForRadius';
 
 const FPS = 60;
 const SHIP_SIZE = 30;
@@ -24,413 +26,522 @@ const MAXINTERVAL = 1000;
 const MININTERVAL = 100;
 
 const useAsteroidsGame = (canvasRef) => {
-    const animationRef = useRef();
-    const keyRefs = useRef({});
-    const bulletsRef = useRef([]);
-    const asteroidsRef = useRef([]);
-    const shipRef = useRef({
-        x: 600,
-        y: 400,
-        r: SHIP_SIZE / 2,
-        a: Math.PI / 2,
-        rot: 0,
-        thrusting: false,
-        thrust: { x: 0, y: 0 },
-    });
+	const animationRef = useRef();
+	const keyRefs = useRef({});
+	const bulletsRef = useRef([]);
+	const asteroidsRef = useRef([]);
+	const shipRef = useRef({
+		x: 600,
+		y: 400,
+		r: SHIP_SIZE / 2,
+		a: Math.PI / 2,
+		rot: 0,
+		thrusting: false,
+		thrust: {x: 0, y: 0}
+	});
 
-    const scoreRef = useRef(0);
-    const livesRef = useRef(3);
-    const startedRef = useRef(false);
-    const gameOverRef = useRef(false);
-    const shipExploding = useRef(false);
-    const explosionTime = useRef(0);
-    const invincible = useRef(false);
-    const invincibleTime = useRef(0);
-    const hyperspaceCooldownRef = useRef(0);
+	const ufoRef = useRef(null);
+	const ufoTimerRef = useRef(0);
 
-    const initialAsteroidCountRef = useRef(0);
-    const particlesRef = useRef([]);
-    const shipDebrisRef = useRef([]);
-    const waveRef = useRef(1);
+	const scoreRef = useRef(0);
+	const livesRef = useRef(3);
+	const startedRef = useRef(false);
+	const gameOverRef = useRef(false);
+	const shipExploding = useRef(false);
+	const explosionTime = useRef(0);
+	const invincible = useRef(false);
+	const invincibleTime = useRef(0);
+	const hyperspaceCooldownRef = useRef(0);
 
-    const { beep } = useSynthFX();
-    const { playLaser, playExplosion, playHyperspace, playEngineHum } = useSoundFX();
-    const engineSoundRef = useRef(null);
+	const initialAsteroidCountRef = useRef(0);
+	const particlesRef = useRef([]);
+	const shipDebrisRef = useRef([]);
+	const waveRef = useRef(1);
 
-    const heartbeatIntervalRef = useRef(null);
-    const isHighRef = useRef(true);
-    const currentHeartbeatIntervalRef = useRef(1000);
+	const {beep} = useSynthFX();
+	const {playLaser, playExplosion, playHyperspace, playEngineHum} = useSoundFX();
+	const engineSoundRef = useRef(null);
 
-    const startHeartbeat = () => {
-        if (heartbeatIntervalRef.current) return; // already running
-        const interval = currentHeartbeatIntervalRef.current;
+	const heartbeatIntervalRef = useRef(null);
+	const isHighRef = useRef(true);
+	const currentHeartbeatIntervalRef = useRef(1000);
 
-        heartbeatIntervalRef.current = setInterval(() => {
-            const freq = isHighRef.current ? 110 : 115;
-            beep(freq, 0.5, 'square', 100);
-            isHighRef.current = !isHighRef.current;
-        }, interval);
-    };
+	const startHeartbeat = () => {
+		if (heartbeatIntervalRef.current) return; // already running
+		const interval = currentHeartbeatIntervalRef.current;
 
-    const updateHeartbeatInterval = () => {
-        if (heartbeatIntervalRef.current) {
-            clearInterval(heartbeatIntervalRef.current);
-        }
+		heartbeatIntervalRef.current = setInterval(() => {
+			const freq = isHighRef.current ? 110 : 115;
+			beep(freq, 0.5, 'square', 100);
+			isHighRef.current = !isHighRef.current;
+		}, interval);
+	};
 
-        const remaining = asteroidsRef.current.length;
-        const initial = initialAsteroidCountRef.current || 1;
+	const updateHeartbeatInterval = () => {
+		if (heartbeatIntervalRef.current) {
+			clearInterval(heartbeatIntervalRef.current);
+		}
 
-        const ratio = remaining / initial;
-        const intervalRange = MAXINTERVAL - MININTERVAL;
+		const remaining = asteroidsRef.current.length;
+		const initial = initialAsteroidCountRef.current || 1;
 
-        // Use squared ratio for pacing (slower at start, faster near end)
-        let newInterval = MININTERVAL + intervalRange * Math.pow(ratio, 2);
+		const ratio = remaining / initial;
+		const intervalRange = MAXINTERVAL - MININTERVAL;
 
-        // Clamp to never increase
-        newInterval = Math.max(MININTERVAL, Math.min(newInterval, currentHeartbeatIntervalRef.current));
-        currentHeartbeatIntervalRef.current = newInterval;
+		// Use squared ratio for pacing (slower at start, faster near end)
+		let newInterval = MININTERVAL + intervalRange * Math.pow(ratio, 2);
 
-        heartbeatIntervalRef.current = setInterval(() => {
-            const frequency = isHighRef.current ? 110 : 115;
-            beep(frequency, 0.5, 'square', 100);
-            isHighRef.current = !isHighRef.current;
-        }, newInterval);
-    };
+		// Clamp to never increase
+		newInterval = Math.max(MININTERVAL, Math.min(newInterval, currentHeartbeatIntervalRef.current));
+		currentHeartbeatIntervalRef.current = newInterval;
 
-    const hyperspaceJump = (canvas) => {
-        let safe = false;
-        let attempts = 0;
-        playHyperspace();
+		heartbeatIntervalRef.current = setInterval(() => {
+			const frequency = isHighRef.current ? 110 : 115;
+			beep(frequency, 0.5, 'square', 100);
+			isHighRef.current = !isHighRef.current;
+		}, newInterval);
+	};
 
-        while (!safe && attempts < 100) {
-            const newX = Math.random() * canvas.width;
-            const newY = Math.random() * canvas.height;
+	const hyperspaceJump = (canvas) => {
+		let safe = false;
+		let attempts = 0;
+		playHyperspace();
 
-            safe = true;
-            for (const asteroid of asteroidsRef.current) {
-                const d = dist(newX, newY, asteroid.x, asteroid.y);
-                if (d < asteroid.r * 2) {
-                    safe = false;
-                    break;
-                }
-            }
+		while (!safe && attempts < 100) {
+			const newX = Math.random() * canvas.width;
+			const newY = Math.random() * canvas.height;
 
-            if (safe) {
-                shipRef.current.x = newX;
-                shipRef.current.y = newY;
-            }
-            attempts++;
-        }
-    };
+			safe = true;
+			for (const asteroid of asteroidsRef.current) {
+				const d = dist(newX, newY, asteroid.x, asteroid.y);
+				if (d < asteroid.r * 2) {
+					safe = false;
+					break;
+				}
+			}
 
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
+			if (safe) {
+				shipRef.current.x = newX;
+				shipRef.current.y = newY;
+			}
+			attempts++;
+		}
+	};
 
-        const handleKeyDown = (e) => {
-            keyRefs.current[e.code] = true;
+	useEffect(() => {
+		const canvas = canvasRef.current;
+		const ctx = canvas.getContext('2d');
 
-            if (e.code === 'Space') {
-                if (
-                    bulletsRef.current.length < 4 &&
-                    !shipExploding.current &&
-                    !gameOverRef.current
-                ) {
-                    const ship = shipRef.current;
-                    bulletsRef.current.push({
-                        x: ship.x + (4 / 3) * ship.r * Math.cos(ship.a),
-                        y: ship.y - (4 / 3) * ship.r * Math.sin(ship.a),
-                        xVel: (500 / FPS) * Math.cos(ship.a),
-                        yVel: -(500 / FPS) * Math.sin(ship.a),
-                        life: 90,
-                    });
-                    playLaser();
-                }
-            }
+		const handleKeyDown = (e) => {
+			keyRefs.current[e.code] = true;
 
-            if (e.code === 'KeyR' && gameOverRef.current) {
-                window.location.reload(); // or a cleaner reset logic later
-            }
+			if (e.code === 'Space') {
+				if (
+					bulletsRef.current.length < 4 &&
+					!shipExploding.current &&
+					!gameOverRef.current
+				) {
+					const ship = shipRef.current;
+					bulletsRef.current.push({
+						x: ship.x + (4 / 3) * ship.r * Math.cos(ship.a),
+						y: ship.y - (4 / 3) * ship.r * Math.sin(ship.a),
+						xVel: (500 / FPS) * Math.cos(ship.a),
+						yVel: -(500 / FPS) * Math.sin(ship.a),
+						life: 90
+					});
+					playLaser();
+				}
+			}
 
+			if (e.code === 'KeyR' && gameOverRef.current) {
+				window.location.reload(); // or a cleaner reset logic later
+			}
 
-            if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && startedRef.current) {
-                if (
-                    hyperspaceCooldownRef.current <= 0 &&
-                    !shipExploding.current &&
-                    !gameOverRef.current
-                ) {
-                    hyperspaceJump(canvas);
-                    hyperspaceCooldownRef.current = HYPERSPACE_COOLDOWN;
-                }
-            }
+			if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && startedRef.current) {
+				if (
+					hyperspaceCooldownRef.current <= 0 &&
+					!shipExploding.current &&
+					!gameOverRef.current
+				) {
+					hyperspaceJump(canvas);
+					hyperspaceCooldownRef.current = HYPERSPACE_COOLDOWN;
+				}
+			}
 
-            if (!startedRef.current) {
-                startedRef.current = true;
+			if (!startedRef.current) {
+				startedRef.current = true;
 
-                createAsteroids(canvas, asteroidsRef, waveRef);
-                initialAsteroidCountRef.current = asteroidsRef.current.length;
-                currentHeartbeatIntervalRef.current = MAXINTERVAL;
-                startHeartbeat();
+				createAsteroids(canvas, asteroidsRef, waveRef);
+				initialAsteroidCountRef.current = asteroidsRef.current.length;
+				currentHeartbeatIntervalRef.current = MAXINTERVAL;
+				startHeartbeat();
 
-                //brief period of invincibility to avoid spawning kills
-                invincible.current = true;
-                invincibleTime.current = 180;
+				//brief period of invincibility to avoid spawning kills
+				invincible.current = true;
+				invincibleTime.current = 180;
 
-                return;
-            }
+			}
 
-        };
+		};
 
-        const handleKeyUp = (e) => {
-            keyRefs.current[e.code] = false;
-        };
+		const handleKeyUp = (e) => {
+			keyRefs.current[e.code] = false;
+		};
 
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('keyup', handleKeyUp);
+		window.addEventListener('keydown', handleKeyDown);
+		window.addEventListener('keyup', handleKeyUp);
 
+		const update = () => {
+				// Particle updates
+				particlesRef.current.forEach(p => {
+					p.x += p.xVel;
+					p.y += p.yVel;
+					p.life--;
+				});
+				particlesRef.current = particlesRef.current.filter(p => p.life > 0);
 
+				// Ship debris updates
+				shipDebrisRef.current.forEach(d => {
+					d.x += d.xVel;
+					d.y += d.yVel;
+					d.angle += d.rotationSpeed;
+					d.life--;
+				});
+				shipDebrisRef.current = shipDebrisRef.current.filter(d => d.life > 0);
 
-        const update = () => {
-            // Particle updates
-            particlesRef.current.forEach(p => {
-                p.x += p.xVel;
-                p.y += p.yVel;
-                p.life--;
-            });
-            particlesRef.current = particlesRef.current.filter(p => p.life > 0);
+				// Hyperspace cooldown
+				if (hyperspaceCooldownRef.current > 0) {
+					hyperspaceCooldownRef.current--;
+				}
 
-            // Ship debris updates
-            shipDebrisRef.current.forEach(d => {
-                d.x += d.xVel;
-                d.y += d.yVel;
-                d.angle += d.rotationSpeed;
-                d.life--;
-            });
-            shipDebrisRef.current = shipDebrisRef.current.filter(d => d.life > 0);
+				// Update ship
+				const keys = keyRefs.current;
+				const ship = shipRef.current;
 
-            // Hyperspace cooldown
-            if (hyperspaceCooldownRef.current > 0) {
-                hyperspaceCooldownRef.current--;
-            }
+				if (!shipExploding.current && !invincible.current) {
+					const shipPoly = getShipPolygon(ship);
+					for (const asteroid of asteroidsRef.current) {
+						const asteroidPoly = getAsteroidPolygon(asteroid);
+						if (polygonsIntersect(shipPoly, asteroidPoly)) {
+							shipExploding.current = true;
+							explosionTime.current = 60;
+							ship.thrust.x = 0;
+							ship.thrust.y = 0;
+							shipDebrisRef.current = spawnShipDebris(ship);
+							playExplosion('big');
+							return;
+						}
+					}
+				}
 
-            // Update ship
-            const keys = keyRefs.current;
-            const ship = shipRef.current;
+				if (shipExploding.current) {
+					explosionTime.current--;
+					if (explosionTime.current <= 0) {
+						livesRef.current--;
+						if (livesRef.current <= 0) {
+							gameOverRef.current = true;
+							return;
+						}
+						ship.x = canvas.width / 2;
+						ship.y = canvas.height / 2;
+						ship.a = Math.PI / 2;
+						ship.thrust = {x: 0, y: 0};
+						ship.rot = 0;
+						shipExploding.current = false;
+						invincible.current = true;
+						invincibleTime.current = 180;
+					}
+					return;
+				}
 
-            if (!shipExploding.current && !invincible.current) {
-                const shipPoly = getShipPolygon(ship);
-                for (const asteroid of asteroidsRef.current) {
-                    const asteroidPoly = getAsteroidPolygon(asteroid);
-                    if (polygonsIntersect(shipPoly, asteroidPoly)) {
-                        shipExploding.current = true;
-                        explosionTime.current = 60;
-                        ship.thrust.x = 0;
-                        ship.thrust.y = 0;
-                        shipDebrisRef.current = spawnShipDebris(ship);
-                        playExplosion('big');
-                        return;
-                    }
-                }
-            }
+				if (invincible.current) {
+					invincibleTime.current--;
+					if (invincibleTime.current <= 0) {
+						invincible.current = false;
+					}
+				}
 
-            if (shipExploding.current) {
-                explosionTime.current--;
-                if (explosionTime.current <= 0) {
-                    livesRef.current--;
-                    if (livesRef.current <= 0) {
-                        gameOverRef.current = true;
-                        return;
-                    }
-                    ship.x = canvas.width / 2;
-                    ship.y = canvas.height / 2;
-                    ship.a = Math.PI / 2;
-                    ship.thrust = { x: 0, y: 0 };
-                    ship.rot = 0;
-                    shipExploding.current = false;
-                    invincible.current = true;
-                    invincibleTime.current = 180;
-                }
-                return;
-            }
+				if (keys['ArrowLeft']) {
+					ship.rot = TURN_SPEED / 180 * Math.PI / FPS;
+				} else if (keys['ArrowRight']) {
+					ship.rot = -TURN_SPEED / 180 * Math.PI / FPS;
+				} else {
+					ship.rot = 0;
+				}
 
-            if (invincible.current) {
-                invincibleTime.current--;
-                if (invincibleTime.current <= 0) {
-                    invincible.current = false;
-                }
-            }
+				const thrustingNow = keys['ArrowUp'] || false;
+				if (thrustingNow && !ship.thrusting) {
+					ship.thrusting = true;
+					if (!engineSoundRef.current) {
+						engineSoundRef.current = playEngineHum();
+					}
+				} else if (!thrustingNow && ship.thrusting) {
+					ship.thrusting = false;
+					if (engineSoundRef.current) {
+						engineSoundRef.current.stop();
+						engineSoundRef.current = null;
+					}
+				}
 
-            if (keys['ArrowLeft']) {
-                ship.rot = TURN_SPEED / 180 * Math.PI / FPS;
-            } else if (keys['ArrowRight']) {
-                ship.rot = -TURN_SPEED / 180 * Math.PI / FPS;
-            } else {
-                ship.rot = 0;
-            }
+				if (ship.thrusting) {
+					ship.thrust.x += (THRUST * Math.cos(ship.a)) / FPS;
+					ship.thrust.y -= (THRUST * Math.sin(ship.a)) / FPS;
+				} else {
+					ship.thrust.x -= (FRICTION * ship.thrust.x) / FPS;
+					ship.thrust.y -= (FRICTION * ship.thrust.y) / FPS;
+				}
 
-            const thrustingNow = keys['ArrowUp'] || false;
-            if (thrustingNow && !ship.thrusting) {
-                ship.thrusting = true;
-                if (!engineSoundRef.current) {
-                    engineSoundRef.current = playEngineHum();
-                }
-            } else if (!thrustingNow && ship.thrusting) {
-                ship.thrusting = false;
-                if (engineSoundRef.current) {
-                    engineSoundRef.current.stop();
-                    engineSoundRef.current = null;
-                }
-            }
+				ship.a += ship.rot;
+				ship.x += ship.thrust.x;
+				ship.y += ship.thrust.y;
 
-            if (ship.thrusting) {
-                ship.thrust.x += (THRUST * Math.cos(ship.a)) / FPS;
-                ship.thrust.y -= (THRUST * Math.sin(ship.a)) / FPS;
-            } else {
-                ship.thrust.x -= (FRICTION * ship.thrust.x) / FPS;
-                ship.thrust.y -= (FRICTION * ship.thrust.y) / FPS;
-            }
+				wrapAround(ship, canvas);
 
-            ship.a += ship.rot;
-            ship.x += ship.thrust.x;
-            ship.y += ship.thrust.y;
+				// Asteroid updates
+				asteroidsRef.current.forEach(ast => {
+					ast.x += ast.xVel;
+					ast.y += ast.yVel;
+					ast.angle += ast.rotationSpeed;
+					wrapAround(ast, canvas);
+				});
 
-            wrapAround(ship, canvas);
+				// Bullet updates
+				bulletsRef.current.forEach(bullet => {
+					bullet.x += bullet.xVel;
+					bullet.y += bullet.yVel;
+					bullet.life--;
+				});
 
-            // Asteroid updates
-            asteroidsRef.current.forEach(ast => {
-                ast.x += ast.xVel;
-                ast.y += ast.yVel;
-                ast.angle += ast.rotationSpeed;
-                wrapAround(ast, canvas);
-            });
+				// Bullet collision
+				for (let i = bulletsRef.current.length - 1; i >= 0; i--) {
+					const bullet = bulletsRef.current[i];
+					for (let j = asteroidsRef.current.length - 1; j >= 0; j--) {
+						const asteroid = asteroidsRef.current[j];
+						const poly = getAsteroidPolygon(asteroid);
+						if (pointInPolygon({x: bullet.x, y: bullet.y}, poly)) {
 
-            // Bullet updates
-            bulletsRef.current.forEach(bullet => {
-                bullet.x += bullet.xVel;
-                bullet.y += bullet.yVel;
-                bullet.life--;
-            });
+							// Split asteroid or spawn particles
+							const r = asteroid.r;
 
-            // Bullet collision
-            for (let i = bulletsRef.current.length - 1; i >= 0; i--) {
-                const bullet = bulletsRef.current[i];
-                for (let j = asteroidsRef.current.length - 1; j >= 0; j--) {
-                    const asteroid = asteroidsRef.current[j];
-                    const poly = getAsteroidPolygon(asteroid);
-                    if (pointInPolygon({ x: bullet.x, y: bullet.y }, poly)) {
+							// Scoring and explosion sound based on radius
+							scoreRef.current += scoreForRadius(r);
+							let explosionType;
+							if (r > 50) {
+								explosionType = 'big';
+							} else if (r > 25) {
+								explosionType = 'medium';
+							} else {
+								explosionType = 'small';
+							}
+							playExplosion(explosionType);
 
-                        // Split asteroid or spawn particles
-                        const r = asteroid.r;
+							// Split or spawn particles
+							const children = splitAsteroid(asteroid);
+							if (children.length > 0) {
+								asteroidsRef.current.push(...children);
+							} else {
+								particlesRef.current.push(...spawnParticles(
+									asteroid.x,
+									asteroid.y,
+									15,
+									['white', '#cccccc', '#88ccff']));
+							}
 
-                        // Scoring and explosion sound based on radius
-                        scoreRef.current += scoreForRadius(r);
-                        playExplosion(r > 50 ? 'big' : r > 25 ? 'medium' : 'small');
+							asteroidsRef.current.splice(j, 1);
+							updateHeartbeatInterval();
+							bulletsRef.current.splice(i, 1);
+							break;
+						}
+					}
+				}
 
-                        // Split or spawn particles
-                        const children = splitAsteroid(asteroid);
-                        if (children.length > 0) {
-                            asteroidsRef.current.push(...children);
-                        } else {
-                            particlesRef.current.push(...spawnParticles(asteroid.x, asteroid.y));
-                        }
+				bulletsRef.current = bulletsRef.current.filter(b =>
+					b.life > 0 &&
+					b.x >= 0 && b.x <= canvas.width &&
+					b.y >= 0 && b.y <= canvas.height
+				);
 
-                        asteroidsRef.current.splice(j, 1);
-                        updateHeartbeatInterval();
-                        bulletsRef.current.splice(i, 1);
-                        break;
-                    }
-                }
-            }
+				// UFO spawn timer and update
+				if (!ufoRef.current && startedRef.current && !gameOverRef.current) {
+					if (ufoTimerRef.current <= 0) {
+						ufoRef.current = createUFO(canvas.width, canvas.height);
+						// Next UFO in 20–40 seconds
+						ufoTimerRef.current = FPS * (20 + Math.random() * 20);
+					} else {
+						ufoTimerRef.current--;
+					}
+				}
 
-            bulletsRef.current = bulletsRef.current.filter(b =>
-                b.life > 0 &&
-                b.x >= 0 && b.x <= canvas.width &&
-                b.y >= 0 && b.y <= canvas.height
-            );
+				// UFO update and despawn
+				if (ufoRef.current) {
+					ufoRef.current.update(shipRef.current, canvas.width, canvas.height);
+					if (!ufoRef.current.isAlive) {
+						ufoRef.current = null;
+						ufoTimerRef.current = FPS * (20 + Math.random() * 20);
+					}
+				}
 
-            // End wave logic
-            if (startedRef.current && asteroidsRef.current.length === 0 && !gameOverRef.current) {
-                waveRef.current++;
+				// 1. Ship collides with UFO
+				if (
+					ufoRef.current &&
+					!shipExploding.current &&
+					!invincible.current
+				) {
+					const dx = shipRef.current.x - (ufoRef.current.x + ufoRef.current.width / 2);
+					const dy = shipRef.current.y - (ufoRef.current.y + ufoRef.current.height / 2);
+					const distSq = dx * dx + dy * dy;
+					const minDist = shipRef.current.r + Math.max(ufoRef.current.width, ufoRef.current.height) / 2;
+					if (distSq < minDist * minDist) {
+						shipExploding.current = true;
+						explosionTime.current = 60;
+						shipRef.current.thrust.x = 0;
+						shipRef.current.thrust.y = 0;
+						shipDebrisRef.current = spawnShipDebris(shipRef.current);
+						playExplosion('big');
+						// Optionally, destroy UFO too:
+						ufoRef.current.isAlive = false;
+						return;
+					}
+				}
 
-                createAsteroids(canvas, asteroidsRef, waveRef, 5 + waveRef.current);
-                initialAsteroidCountRef.current = asteroidsRef.current.length;
+				// 2. UFO bullets hit the ship
+				if (
+					ufoRef.current &&
+					!shipExploding.current &&
+					!invincible.current
+				) {
+					for (const bullet of ufoRef.current.bullets) {
+						const dx = shipRef.current.x - bullet.x;
+						const dy = shipRef.current.y - bullet.y;
+						if (Math.sqrt(dx * dx + dy * dy) < shipRef.current.r) {
+							shipExploding.current = true;
+							explosionTime.current = 60;
+							shipRef.current.thrust.x = 0;
+							shipRef.current.thrust.y = 0;
+							shipDebrisRef.current = spawnShipDebris(shipRef.current);
+							playExplosion('big');
+							return;
+						}
+					}
+				}
 
-                //reset heartbeat
-                currentHeartbeatIntervalRef.current = MAXINTERVAL;
-                startHeartbeat();
+				// 3. Ship bullets hit the UFO
+				if (ufoRef.current) {
+					for (let i = bulletsRef.current.length - 1; i >= 0; i--) {
+						const bullet = bulletsRef.current[i];
+						const dx = bullet.x - (ufoRef.current.x + ufoRef.current.width / 2);
+						const dy = bullet.y - (ufoRef.current.y + ufoRef.current.height / 2);
+						const hitRadius = Math.max(ufoRef.current.width, ufoRef.current.height) / 2;
+						if (dx * dx + dy * dy < hitRadius * hitRadius) {
+							// Destroy UFO, award points, play sound, remove bullet
+							particlesRef.current.push(
+								...spawnParticles(
+									ufoRef.current.x + ufoRef.current.width / 2,
+									ufoRef.current.y + ufoRef.current.height / 2,
+									20,
+									['#d726ff', '#00ffe7', '#ff61a6', '#fff200']
+						)
+						)
+							;
+							ufoRef.current.isAlive = false;
+							scoreRef.current += 200;
+							playExplosion('medium');
+							bulletsRef.current.splice(i, 1);
+							break;
+						}
+					}
+				}
 
-                //short invincibility mode to avoid spawning kills
-                invincible.current = true;
-                invincibleTime.current = 180;
-            }
-        };
+				// End wave logic
+				if (startedRef.current && asteroidsRef.current.length === 0 && !gameOverRef.current) {
+					waveRef.current++;
 
-        const render = () => {
-            const pulse = 0.75 + 0.25 * Math.sin(Date.now() / 700);
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = `rgba(255, 255, 255, ${pulse.toFixed(2)})`;
+					createAsteroids(canvas, asteroidsRef, waveRef, 5 + waveRef.current);
+					initialAsteroidCountRef.current = asteroidsRef.current.length;
 
-            if (!startedRef.current) {
-                ctx.fillStyle = 'black';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = 'white';
-                ctx.font = '50px "Press Start 2P"';
-                ctx.textAlign = 'center';
-                ctx.fillText('Press Any Key to Start', canvas.width / 2, canvas.height / 2);
-                return;
-            }
+					//reset heartbeat
+					currentHeartbeatIntervalRef.current = MAXINTERVAL;
+					startHeartbeat();
 
-            drawUI(ctx, scoreRef.current, livesRef.current, hyperspaceCooldownRef.current);
-            drawParticles(ctx, particlesRef.current);
-            drawShipDebris(ctx, shipDebrisRef.current);
-            asteroidsRef.current.forEach(ast => drawAsteroid(ctx, ast));
-            if (!shipExploding.current) {
-                if (invincible.current) {
-                    // Flicker: show ship every 10 frames
-                    if (Math.floor(invincibleTime.current / 10) % 2 === 0) {
-                        drawShip(ctx, shipRef.current, { thrusting: shipRef.current.thrusting });
-                    }
-                } else {
-                    drawShip(ctx, shipRef.current, { thrusting: shipRef.current.thrusting });
-                }
-            }
+					//short invincibility mode to avoid spawning kills
+					invincible.current = true;
+					invincibleTime.current = 180;
+				}
+			}
+		;
 
-            if (gameOverRef.current) {
-                ctx.fillStyle = 'white';
-                ctx.font = '50px "Press Start 2P"';
-                ctx.textAlign = 'center';
-                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
-                ctx.font = '20px "Press Start 2P"';
-                ctx.fillText('Press R to Restart', canvas.width / 2, canvas.height / 2 + 50);
-            }
+		const render = () => {
+			const pulse = 0.75 + 0.25 * Math.sin(Date.now() / 700);
+			ctx.fillStyle = 'black';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = `rgba(255, 255, 255, ${pulse.toFixed(2)})`;
 
-            // Draw bullets
-            ctx.fillStyle = 'white';
-            bulletsRef.current.forEach(bullet => {
-                ctx.beginPath();
-                ctx.arc(bullet.x, bullet.y, 2, 0, Math.PI * 2);
-                ctx.fill();
-            });
-        };
+			if (!startedRef.current) {
+				ctx.fillStyle = 'black';
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.fillStyle = 'white';
+				ctx.font = '50px "Press Start 2P"';
+				ctx.textAlign = 'center';
+				ctx.fillText('Press Any Key to Start', canvas.width / 2, canvas.height / 2);
+				return;
+			}
 
-        const loop = () => {
-            update();
-            render();
-            animationRef.current = requestAnimationFrame(loop);
-        };
+			drawUI(ctx, scoreRef.current, livesRef.current, hyperspaceCooldownRef.current);
+			drawParticles(ctx, particlesRef.current);
+			drawShipDebris(ctx, shipDebrisRef.current);
+			asteroidsRef.current.forEach(ast => drawAsteroid(ctx, ast));
+			if (!shipExploding.current) {
+				if (invincible.current) {
+					// Flicker: show ship every 10 frames
+					if (Math.floor(invincibleTime.current / 10) % 2 === 0) {
+						drawShip(ctx, shipRef.current, {thrusting: shipRef.current.thrusting});
+					}
+				} else {
+					drawShip(ctx, shipRef.current, {thrusting: shipRef.current.thrusting});
+				}
+			}
 
-        animationRef.current = requestAnimationFrame(loop);
+			if (ufoRef.current) {
+				drawUFO(ctx, ufoRef.current);
+			}
 
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('keyup', handleKeyUp);
-            cancelAnimationFrame(animationRef.current);
-            clearInterval(heartbeatIntervalRef.current);
-            heartbeatIntervalRef.current = null;
-            if (engineSoundRef.current) engineSoundRef.current.stop();
-        };
-    }, [canvasRef]);
+			if (gameOverRef.current) {
+				ctx.fillStyle = 'white';
+				ctx.font = '50px "Press Start 2P"';
+				ctx.textAlign = 'center';
+				ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
+				ctx.font = '20px "Press Start 2P"';
+				ctx.fillText('Press R to Restart', canvas.width / 2, canvas.height / 2 + 50);
+			}
+
+			// Draw bullets
+			ctx.fillStyle = 'white';
+			bulletsRef.current.forEach(bullet => {
+				ctx.beginPath();
+				ctx.arc(bullet.x, bullet.y, 2, 0, Math.PI * 2);
+				ctx.fill();
+			});
+		};
+
+		const loop = () => {
+			update();
+			render();
+			animationRef.current = requestAnimationFrame(loop);
+		};
+
+		animationRef.current = requestAnimationFrame(loop);
+
+		return () => {
+			window.removeEventListener('keydown', handleKeyDown);
+			window.removeEventListener('keyup', handleKeyUp);
+			cancelAnimationFrame(animationRef.current);
+			clearInterval(heartbeatIntervalRef.current);
+			heartbeatIntervalRef.current = null;
+			if (engineSoundRef.current) engineSoundRef.current.stop();
+		};
+	}, [canvasRef]);
+
+	;
 };
 
 export default useAsteroidsGame;
