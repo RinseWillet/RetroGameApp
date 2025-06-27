@@ -3,7 +3,7 @@ const drawParticles = (ctx, particles) => {
       ctx.save();
       ctx.shadowBlur = 5;
       ctx.shadowColor = p.color;
-      ctx.fillStyle = p.color;
+      ctx.fillStyle = p.color || 'white';
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.fill();
@@ -12,4 +12,3 @@ const drawParticles = (ctx, particles) => {
   };
   
   export default drawParticles;
-  

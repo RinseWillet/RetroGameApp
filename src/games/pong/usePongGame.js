@@ -71,6 +71,7 @@ const usePongGame = (canvasRef) => {
         ctx.font = "50px 'Press Start 2P', monospace";
         ctx.textAlign = 'center';
         ctx.fillStyle = `rgba(255, 255, 255, ${pulse.toFixed(2)})`;
+        
         if (gameOverRef.current) {
           ctx.fillText(
             player.paddle.score >= 10 ? 'PLAYER WINS!' : 'COMPUTER WINS!',
