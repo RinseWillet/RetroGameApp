@@ -42,9 +42,9 @@ export const spawnShipDebris = (ship) => {
 		debris.push({
 			x: p.x,
 			y: p.y,
-			xVel: (Math.random() - 0.5) * 8,
-			yVel: (Math.random() - 0.5) * 8,
-			life: 90,
+			xVel: (Math.random() - 0.5) * 6,
+			yVel: (Math.random() - 0.5) * 6,
+			life: 120,
 			maxLife: 90,
 			size: Math.random() * 2 + 1.5,
 			angle: Math.random() * Math.PI * 2,
