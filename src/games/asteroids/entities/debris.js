@@ -1,4 +1,4 @@
-export const spawnParticles = (x, y, count, colors) => {
+export const spawnParticles = (x, y, count, colors = ['white']) => {
 	const newParticles = [];
 
 	for (let i = 0; i < count; i++) {
