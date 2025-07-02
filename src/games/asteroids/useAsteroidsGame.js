@@ -2,8 +2,8 @@ import {useEffect, useRef} from 'react';
 import useSynthFX from '../../hooks/useSynthFX';
 import useSoundFX from '../../hooks/useSoundFX';
 import {dist, wrapAround} from './utils/mathUtils';
-import {pointInPolygon, polygonsIntersect} from './utils/collisionUtils';
-import {getAsteroidPolygon, getShipPolygon} from './entities/getPolygons';
+import {pointInPolygon } from './utils/collisionUtils';
+import {getAsteroidPolygon } from './entities/getPolygons';
 import createAsteroids from './entities/createAsteroids';
 import createUFO from './entities/createUFO.js';
 import drawUFO from './draw/drawUFO.js';
@@ -15,6 +15,11 @@ import drawParticles from './draw/drawParticles';
 import drawShipDebris from './draw/drawShipDebris';
 import {splitAsteroid} from './logic/splitAsteroid';
 import {scoreForRadius} from './logic/scoreForRadius';
+import {
+	updateShipDebris,
+	updateHyperspaceCooldown,
+	updateShip
+} from './logic/updateShipHelpers';
 
 const FPS = 60;
 const SHIP_SIZE = 30;
@@ -59,7 +64,7 @@ const useAsteroidsGame = (canvasRef) => {
 	const waveRef = useRef(1);
 
 	const {beep} = useSynthFX();
-	const {playLaser, playExplosion, playHyperspace, playEngineHum} = useSoundFX();
+	const {playLaser, playExplosion, playHyperspace, playEngineHum } = useSoundFX();
 	const engineSoundRef = useRef(null);
 
 	const heartbeatIntervalRef = useRef(null);
@@ -200,152 +205,6 @@ const useAsteroidsGame = (canvasRef) => {
 			particlesRef.current = particlesRef.current.filter(p => p.life > 0);
 		};
 
-		const updateShipDebris = (shipDebrisRef) => {
-			shipDebrisRef.current.forEach(d => {
-				d.x += d.xVel;
-				d.y += d.yVel;
-				d.angle += d.rotationSpeed;
-				d.life--;
-			});
-			shipDebrisRef.current = shipDebrisRef.current.filter(d => d.life > 0);
-		};
-
-		const updateHyperspaceCooldown = (hyperspaceCooldownRef) => {
-			if (hyperspaceCooldownRef.current > 0) {
-				hyperspaceCooldownRef.current--;
-			}
-		};
-
-		const handleShipAsteroidCollision = (shipState, asteroidsRef, playExplosion) => {
-			const {shipRef, shipExploding, invincible, shipDebrisRef, explosionTime, spawnShipDebris} = shipState;
-			if (!shipExploding.current && !invincible.current) {
-				const shipPoly = getShipPolygon(shipRef.current);
-				for (const asteroid of asteroidsRef.current) {
-					const asteroidPoly = getAsteroidPolygon(asteroid);
-					if (polygonsIntersect(shipPoly, asteroidPoly)) {
-						shipExploding.current = true;
-						explosionTime.current = 60;
-						shipRef.current.thrust.x = 0;
-						shipRef.current.thrust.y = 0;
-						shipDebrisRef.current = spawnShipDebris(shipRef.current);
-						playExplosion('big');
-						return true;
-					}
-				}
-			}
-			return false;
-		};
-
-		const handleShipRespawn = (shipState, canvas, playExplosion, gameState) => {
-			const {
-				shipRef,
-				shipExploding,
-				explosionTime,
-				invincible,
-				invincibleTime,
-				livesRef
-			} = shipState;
-			const {gameOverRef} = gameState;
-			if (shipExploding.current) {
-				explosionTime.current--;
-				if (explosionTime.current <= 0) {
-					livesRef.current--;
-					if (livesRef.current <= 0) {
-						gameOverRef.current = true;
-						return;
-					}
-					shipRef.current.x = canvas.width / 2;
-					shipRef.current.y = canvas.height / 2;
-					shipRef.current.a = Math.PI / 2;
-					shipRef.current.thrust = {x: 0, y: 0};
-					shipRef.current.rot = 0;
-					shipExploding.current = false;
-					invincible.current = true;
-					invincibleTime.current = 180;
-				}
-				return true;
-			}
-			return false;
-		};
-
-		const handleShipRotation = (keys, ship, TURN_SPEED, FPS) => {
-			if (keys['ArrowLeft']) {
-				ship.rot = TURN_SPEED / 180 * Math.PI / FPS;
-			} else if (keys['ArrowRight']) {
-				ship.rot = -TURN_SPEED / 180 * Math.PI / FPS;
-			} else {
-				ship.rot = 0;
-			}
-		};
-
-		const handleShipThrust = (keys, ship, engineSoundRef, playEngineHum, THRUST, FRICTION, FPS) => {
-			const thrustingNow = keys['ArrowUp'] || false;
-			if (thrustingNow && !ship.thrusting) {
-				ship.thrusting = true;
-				if (!engineSoundRef.current) {
-					engineSoundRef.current = playEngineHum();
-				}
-			} else if (!thrustingNow && ship.thrusting) {
-				ship.thrusting = false;
-				if (engineSoundRef.current) {
-					engineSoundRef.current.stop();
-					engineSoundRef.current = null;
-				}
-			}
-			if (ship.thrusting) {
-				ship.thrust.x += (THRUST * Math.cos(ship.a)) / FPS;
-				ship.thrust.y -= (THRUST * Math.sin(ship.a)) / FPS;
-			} else {
-				ship.thrust.x -= (FRICTION * ship.thrust.x) / FPS;
-				ship.thrust.y -= (FRICTION * ship.thrust.y) / FPS;
-			}
-		};
-
-		const updateShip = (keyRefs,
-		                    asteroidsRef,
-		                    gameState,
-		                    canvas,
-		                    playExplosion,
-		                    constants,
-		                    shipState) => {
-
-			const {TURN_SPEED, FPS, THRUST, FRICTION} = constants;
-			const keys = keyRefs.current;
-			const ship = shipRef.current;
-
-			// Early exit if collision or respawn handled
-			if (
-				handleShipAsteroidCollision(shipState, asteroidsRef, playExplosion) ||
-				handleShipRespawn(shipState, canvas, playExplosion, gameState)
-			) {
-				return;
-			}
-
-			if (invincible.current) {
-				invincibleTime.current--;
-				if (invincibleTime.current <= 0) {
-					invincible.current = false;
-				}
-			}
-
-			handleShipRotation(keys, ship, TURN_SPEED, FPS);
-			handleShipThrust(
-				keys,
-				ship,
-				shipState.engineSoundRef,
-				playEngineHum,
-				THRUST,
-				FRICTION,
-				FPS
-			);
-
-			ship.a += ship.rot;
-			ship.x += ship.thrust.x;
-			ship.y += ship.thrust.y;
-
-			wrapAround(ship, canvas);
-		};
-
 		const updateAsteroids = (asteroidsState, canvas) => {
 			const {asteroidsRef} = asteroidsState;
 			asteroidsRef.current.forEach(ast => {
@@ -389,7 +248,7 @@ const useAsteroidsGame = (canvasRef) => {
 			updateHeartbeatInterval();
 		};
 
-// Refactored updateBulletAsteroidsHit
+
 		const updateBulletAsteroidsHit = (bulletsRef, asteroidsState) => {
 			const {asteroidsRef, particlesRef} = asteroidsState;
 			for (let i = bulletsRef.current.length - 1; i >= 0; i--) {
@@ -615,13 +474,13 @@ const useAsteroidsGame = (canvasRef) => {
 				updateParticles(particlesRef);
 				updateShipDebris(shipDebrisRef);
 				updateHyperspaceCooldown(hyperspaceCooldownRef);
-				updateShip(keyRefs,
+				updateShip({keyRefs,
 					asteroidsRef,
 					gameState,
 					canvas,
 					playExplosion,
 					constants,
-					shipState);
+					shipState}, playEngineHum);
 
 				updateAsteroids(asteroidsState, canvas);
 
