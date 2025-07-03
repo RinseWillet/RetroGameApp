@@ -1,22 +1,28 @@
 import {useCallback, useEffect, useRef} from 'react';
 import useSynthFX from '../../hooks/useSynthFX';
 import useSoundFX from '../../hooks/useSoundFX';
-import {dist, wrapAround} from './utils/mathUtils';
-import {pointInPolygon} from './utils/collisionUtils';
-import {getAsteroidPolygon} from './entities/getPolygons';
+import {dist} from './utils/mathUtils';
 import createAsteroids from './entities/createAsteroids';
 import drawUFO from './draw/drawUFO.js';
-import {spawnParticles, spawnShipDebris} from './entities/debris';
+import {spawnShipDebris} from './entities/debris';
 import drawAsteroid from './draw/drawAsteroid';
 import drawShip from './draw/drawShip';
 import drawUI from './draw/drawUI';
 import drawParticles from './draw/drawParticles';
 import drawShipDebris from './draw/drawShipDebris';
-import {splitAsteroid} from './logic/splitAsteroid';
-import {scoreForRadius} from './logic/scoreForRadius';
 import {updateHyperspaceCooldown, updateShip, updateShipDebris} from './logic/updateShipHelpers';
+import {updateAsteroids, updateBulletAsteroidsHit} from './logic/asteroidHelpers.js';
 import {handleUFOHit, updateUFO} from './logic/ufoHelpers.js';
-import { FPS, SHIP_SIZE, TURN_SPEED, THRUST, FRICTION, HYPERSPACE_COOLDOWN, MAXINTERVAL, MININTERVAL } from './logic/constants.js';
+import {
+	FPS,
+	FRICTION,
+	HYPERSPACE_COOLDOWN,
+	MAXINTERVAL,
+	MININTERVAL,
+	SHIP_SIZE,
+	THRUST,
+	TURN_SPEED
+} from './logic/constants.js';
 
 const useAsteroidsGame = (canvasRef) => {
 	const animationRef = useRef();
@@ -195,72 +201,12 @@ const useAsteroidsGame = (canvasRef) => {
 			particlesRef.current = particlesRef.current.filter(p => p.life > 0);
 		};
 
-		const updateAsteroids = (asteroidsState, canvas) => {
-			const {asteroidsRef} = asteroidsState;
-			asteroidsRef.current.forEach(ast => {
-				ast.x += ast.xVel;
-				ast.y += ast.yVel;
-				ast.angle += ast.rotationSpeed;
-				wrapAround(ast, canvas);
-			});
-		};
-
 		const updateBullets = (bulletsRef) => {
 			bulletsRef.current.forEach(bullet => {
 				bullet.x += bullet.xVel;
 				bullet.y += bullet.yVel;
 				bullet.life--;
 			});
-		};
-
-		// Helper function outside updateBulletAsteroidsHit
-		const handleAsteroidHit = (bullet, asteroid, asteroidsRef, particlesRef, scoreRef, playExplosion, updateHeartbeatInterval) => {
-			const r = asteroid.r;
-			scoreRef.current += scoreForRadius(r);
-			let explosionType;
-			if (r > 50) {
-				explosionType = 'big';
-			} else if (r > 25) {
-				explosionType = 'medium';
-			} else {
-				explosionType = 'small';
-			}
-			playExplosion(explosionType);
-
-			const children = splitAsteroid(asteroid);
-			if (children.length > 0) {
-				asteroidsRef.current.push(...children);
-			} else {
-				particlesRef.current.push(...spawnParticles(
-					asteroid.x, asteroid.y, 15, ['white', '#cccccc', '#88ccff']
-				));
-			}
-			updateHeartbeatInterval();
-		};
-
-		const updateBulletAsteroidsHit = (bulletsRef, asteroidsState) => {
-			const {asteroidsRef, particlesRef} = asteroidsState;
-			for (let i = bulletsRef.current.length - 1; i >= 0; i--) {
-				const bullet = bulletsRef.current[i];
-				for (let j = asteroidsRef.current.length - 1; j >= 0; j--) {
-					const asteroid = asteroidsRef.current[j];
-					const poly = getAsteroidPolygon(asteroid);
-					if (pointInPolygon({x: bullet.x, y: bullet.y}, poly)) {
-						handleAsteroidHit(
-							bullet, asteroid, asteroidsRef, particlesRef, scoreRef, playExplosion, updateHeartbeatInterval
-						);
-						asteroidsRef.current.splice(j, 1);
-						bulletsRef.current.splice(i, 1);
-						break;
-					}
-				}
-			}
-
-			bulletsRef.current = bulletsRef.current.filter(b =>
-				b.life > 0 &&
-				b.x >= 0 && b.x <= canvas.width &&
-				b.y >= 0 && b.y <= canvas.height
-			);
 		};
 
 		const handleWaveEnd = (
@@ -345,7 +291,7 @@ const useAsteroidsGame = (canvasRef) => {
 
 				updateBullets(bulletsRef);
 
-				updateBulletAsteroidsHit(bulletsRef, asteroidsState);
+				updateBulletAsteroidsHit(bulletsRef, asteroidsState, canvas, scoreRef, playExplosion, updateHeartbeatInterval);
 
 				updateUFO(ufoState, gameState, canvas, shipRef);
 
