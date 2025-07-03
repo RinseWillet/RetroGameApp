@@ -2,10 +2,9 @@ import {useCallback, useEffect, useRef} from 'react';
 import useSynthFX from '../../hooks/useSynthFX';
 import useSoundFX from '../../hooks/useSoundFX';
 import {dist, wrapAround} from './utils/mathUtils';
-import {pointInPolygon } from './utils/collisionUtils';
-import {getAsteroidPolygon } from './entities/getPolygons';
+import {pointInPolygon} from './utils/collisionUtils';
+import {getAsteroidPolygon} from './entities/getPolygons';
 import createAsteroids from './entities/createAsteroids';
-import createUFO from './entities/createUFO.js';
 import drawUFO from './draw/drawUFO.js';
 import {spawnParticles, spawnShipDebris} from './entities/debris';
 import drawAsteroid from './draw/drawAsteroid';
@@ -15,20 +14,9 @@ import drawParticles from './draw/drawParticles';
 import drawShipDebris from './draw/drawShipDebris';
 import {splitAsteroid} from './logic/splitAsteroid';
 import {scoreForRadius} from './logic/scoreForRadius';
-import {
-	updateShipDebris,
-	updateHyperspaceCooldown,
-	updateShip
-} from './logic/updateShipHelpers';
-
-const FPS = 60;
-const SHIP_SIZE = 30;
-const TURN_SPEED = 360;
-const THRUST = 5;
-const FRICTION = 0.7;
-const HYPERSPACE_COOLDOWN = 180;
-const MAXINTERVAL = 1000;
-const MININTERVAL = 100;
+import {updateHyperspaceCooldown, updateShip, updateShipDebris} from './logic/updateShipHelpers';
+import {handleUFOHit, updateUFO} from './logic/ufoHelpers.js';
+import { FPS, SHIP_SIZE, TURN_SPEED, THRUST, FRICTION, HYPERSPACE_COOLDOWN, MAXINTERVAL, MININTERVAL } from './logic/constants.js';
 
 const useAsteroidsGame = (canvasRef) => {
 	const animationRef = useRef();
@@ -64,7 +52,7 @@ const useAsteroidsGame = (canvasRef) => {
 	const waveRef = useRef(1);
 
 	const {beep} = useSynthFX();
-	const {playLaser, playExplosion, playHyperspace, playEngineHum } = useSoundFX();
+	const {playLaser, playExplosion, playHyperspace, playEngineHum} = useSoundFX();
 	const engineSoundRef = useRef(null);
 
 	const heartbeatIntervalRef = useRef(null);
@@ -250,7 +238,6 @@ const useAsteroidsGame = (canvasRef) => {
 			updateHeartbeatInterval();
 		};
 
-
 		const updateBulletAsteroidsHit = (bulletsRef, asteroidsState) => {
 			const {asteroidsRef, particlesRef} = asteroidsState;
 			for (let i = bulletsRef.current.length - 1; i >= 0; i--) {
@@ -274,138 +261,6 @@ const useAsteroidsGame = (canvasRef) => {
 				b.x >= 0 && b.x <= canvas.width &&
 				b.y >= 0 && b.y <= canvas.height
 			);
-		};
-
-		const updateUFO = (ufoState, gameState, canvas, shipRef) => {
-			const {ufoRef, ufoTimerRef} = ufoState;
-			const {startedRef, gameOverRef} = gameState;
-
-			if (!ufoRef.current && startedRef.current && !gameOverRef.current) {
-				if (ufoTimerRef.current <= 0) {
-					ufoRef.current = createUFO(canvas.width, canvas.height);
-					// Next UFO in 20–40 seconds
-					ufoTimerRef.current = FPS * (20 + Math.random() * 20);
-				} else {
-					ufoTimerRef.current--;
-				}
-			}
-
-			// UFO update and despawn
-			if (ufoRef.current) {
-				ufoRef.current.update(shipRef.current, canvas.width, canvas.height);
-				if (!ufoRef.current.isAlive) {
-					ufoRef.current = null;
-					ufoTimerRef.current = FPS * (20 + Math.random() * 20);
-				}
-			}
-		};
-
-		const checkShipUFOCollision = (ufoState, shipState, soundFX) => {
-			const {ufoRef} = ufoState;
-			const {shipRef, shipExploding, invincible, shipDebrisRef, explosionTime, spawnShipDebris} = shipState;
-			const {playExplosion} = soundFX;
-
-			if (ufoRef.current && !shipExploding.current && !invincible.current) {
-				const dx = shipRef.current.x - (ufoRef.current.x + ufoRef.current.width / 2);
-				const dy = shipRef.current.y - (ufoRef.current.y + ufoRef.current.height / 2);
-				const distSq = dx * dx + dy * dy;
-				const minDist = shipRef.current.r + Math.max(ufoRef.current.width, ufoRef.current.height) / 2;
-				if (distSq < minDist * minDist) {
-					shipExploding.current = true;
-					explosionTime.current = 60;
-					shipRef.current.thrust.x = 0;
-					shipRef.current.thrust.y = 0;
-					shipDebrisRef.current = spawnShipDebris(shipRef.current);
-					playExplosion('big');
-					ufoRef.current.isAlive = false;
-					return true;
-				}
-			}
-			return false;
-		};
-
-		const checkUFOBulletsHitShip = (
-			ufoState, shipState, asteroidsState, gameState, soundFX
-		) => {
-			const {ufoRef} = ufoState;
-			const {shipRef, shipExploding, invincible, shipDebrisRef, explosionTime, spawnShipDebris} = shipState;
-			const {playExplosion} = soundFX;
-
-			if (
-				ufoRef.current &&
-				!shipExploding.current &&
-				!invincible.current
-			) {
-				for (const bullet of ufoRef.current.bullets) {
-					const dx = shipRef.current.x - bullet.x;
-					const dy = shipRef.current.y - bullet.y;
-					if (Math.sqrt(dx * dx + dy * dy) < shipRef.current.r) {
-						shipExploding.current = true;
-						explosionTime.current = 60;
-						shipRef.current.thrust.x = 0;
-						shipRef.current.thrust.y = 0;
-						shipDebrisRef.current = spawnShipDebris(shipRef.current);
-						playExplosion('big');
-						return true;
-					}
-				}
-			}
-			return false;
-		};
-
-		const checkShipBulletsHitUFO = (
-			ufoState,
-			bulletsRef,
-			asteroidsState,
-			gameState,
-			soundFX
-		) => {
-			const {ufoRef} = ufoState;
-			const {particlesRef} = asteroidsState;
-			const {scoreRef} = gameState;
-			const {playExplosion} = soundFX;
-
-			if (ufoRef.current) {
-				for (let i = bulletsRef.current.length - 1; i >= 0; i--) {
-					const bullet = bulletsRef.current[i];
-					const dx = bullet.x - (ufoRef.current.x + ufoRef.current.width / 2);
-					const dy = bullet.y - (ufoRef.current.y + ufoRef.current.height / 2);
-					const hitRadius = Math.max(ufoRef.current.width, ufoRef.current.height) / 2;
-					if (dx * dx + dy * dy < hitRadius * hitRadius) {
-						particlesRef.current.push(
-							...spawnParticles(
-								ufoRef.current.x + ufoRef.current.width / 2,
-								ufoRef.current.y + ufoRef.current.height / 2,
-								20,
-								['#d726ff', '#00ffe7', '#ff61a6', '#fff200']
-							)
-						);
-						ufoRef.current.isAlive = false;
-						scoreRef.current += 200;
-						playExplosion('medium');
-						bulletsRef.current.splice(i, 1);
-						return true;
-					}
-				}
-			}
-			return false;
-		};
-
-		const handleUFOHit = (
-			ufoState,
-			shipState,
-			bulletsRef,
-			particlesRef,
-			gameState,
-			asteroidsState,
-			soundFX
-		) => {
-
-			checkShipUFOCollision(ufoState, shipState, soundFX);
-
-			checkUFOBulletsHitShip(ufoState, shipState, asteroidsState, gameState, soundFX);
-
-			checkShipBulletsHitUFO(ufoState, bulletsRef, asteroidsState, gameState, soundFX);
 		};
 
 		const handleWaveEnd = (
@@ -476,13 +331,15 @@ const useAsteroidsGame = (canvasRef) => {
 				updateParticles(particlesRef);
 				updateShipDebris(shipDebrisRef);
 				updateHyperspaceCooldown(hyperspaceCooldownRef);
-				updateShip({keyRefs,
+				updateShip({
+					keyRefs,
 					asteroidsRef,
 					gameState,
 					canvas,
 					playExplosion,
 					constants,
-					shipState}, playEngineHum);
+					shipState
+				}, playEngineHum);
 
 				updateAsteroids(asteroidsState, canvas);
 
