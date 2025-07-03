@@ -1,3 +1,12 @@
+export const updateParticles = (particlesRef) => {
+	particlesRef.current.forEach(p => {
+		p.x += p.xVel;
+		p.y += p.yVel;
+		p.life--;
+	});
+	particlesRef.current = particlesRef.current.filter(p => p.life > 0);
+};
+
 export const spawnParticles = (x, y, count, colors = ['white']) => {
 	const newParticles = [];
 

@@ -4,7 +4,7 @@ import useSoundFX from '../../hooks/useSoundFX';
 import {dist} from './utils/mathUtils';
 import createAsteroids from './entities/createAsteroids';
 import drawUFO from './draw/drawUFO.js';
-import {spawnShipDebris} from './entities/debris';
+import {spawnShipDebris, updateParticles} from './entities/debris';
 import drawAsteroid from './draw/drawAsteroid';
 import drawShip from './draw/drawShip';
 import drawUI from './draw/drawUI';
@@ -12,7 +12,9 @@ import drawParticles from './draw/drawParticles';
 import drawShipDebris from './draw/drawShipDebris';
 import {updateHyperspaceCooldown, updateShip, updateShipDebris} from './logic/updateShipHelpers';
 import {updateAsteroids, updateBulletAsteroidsHit} from './logic/asteroidHelpers.js';
+import {updateBullets} from './logic/bulletHelpers.js';
 import {handleUFOHit, updateUFO} from './logic/ufoHelpers.js';
+import {handleWaveEnd} from './logic/gameLogic.js';
 import {
 	FPS,
 	FRICTION,
@@ -191,51 +193,6 @@ const useAsteroidsGame = (canvasRef) => {
 
 		window.addEventListener('keydown', handleKeyDown);
 		window.addEventListener('keyup', handleKeyUp);
-
-		const updateParticles = (particlesRef) => {
-			particlesRef.current.forEach(p => {
-				p.x += p.xVel;
-				p.y += p.yVel;
-				p.life--;
-			});
-			particlesRef.current = particlesRef.current.filter(p => p.life > 0);
-		};
-
-		const updateBullets = (bulletsRef) => {
-			bulletsRef.current.forEach(bullet => {
-				bullet.x += bullet.xVel;
-				bullet.y += bullet.yVel;
-				bullet.life--;
-			});
-		};
-
-		const handleWaveEnd = (
-			gameState,
-			asteroidsState,
-			canvas,
-			currentHeartbeatIntervalRef,
-			MAXINTERVAL,
-			startHeartbeat,
-			shipState
-		) => {
-			const {startedRef, gameOverRef, waveRef} = gameState;
-			const {invincible, invincibleTime} = shipState;
-			const {asteroidsRef, initialAsteroidCountRef, createAsteroids} = asteroidsState;
-			if (startedRef.current && asteroidsRef.current.length === 0 && !gameOverRef.current) {
-				waveRef.current++;
-
-				createAsteroids(canvas, asteroidsRef, waveRef, 5 + waveRef.current);
-				initialAsteroidCountRef.current = asteroidsRef.current.length;
-
-				//reset heartbeat
-				currentHeartbeatIntervalRef.current = MAXINTERVAL;
-				startHeartbeat();
-
-				//short invincibility mode to avoid spawning kills
-				invincible.current = true;
-				invincibleTime.current = 180;
-			}
-		};
 
 		const update = () => {
 				const shipState = {
