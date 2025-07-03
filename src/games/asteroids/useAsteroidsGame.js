@@ -1,4 +1,4 @@
-import {useEffect, useRef} from 'react';
+import {useCallback, useEffect, useRef} from 'react';
 import useSynthFX from '../../hooks/useSynthFX';
 import useSoundFX from '../../hooks/useSoundFX';
 import {dist, wrapAround} from './utils/mathUtils';
@@ -71,7 +71,7 @@ const useAsteroidsGame = (canvasRef) => {
 	const isHighRef = useRef(true);
 	const currentHeartbeatIntervalRef = useRef(1000);
 
-	const startHeartbeat = () => {
+	const startHeartbeat = useCallback(() => {
 		if (heartbeatIntervalRef.current) return; // already running
 		const interval = currentHeartbeatIntervalRef.current;
 
@@ -80,9 +80,9 @@ const useAsteroidsGame = (canvasRef) => {
 			beep(freq, 0.5, 'square', 100);
 			isHighRef.current = !isHighRef.current;
 		}, interval);
-	};
+	}, [beep, heartbeatIntervalRef, currentHeartbeatIntervalRef, isHighRef]);
 
-	const updateHeartbeatInterval = () => {
+	const updateHeartbeatInterval = useCallback(() => {
 		if (heartbeatIntervalRef.current) {
 			clearInterval(heartbeatIntervalRef.current);
 		}
@@ -105,9 +105,9 @@ const useAsteroidsGame = (canvasRef) => {
 			beep(frequency, 0.5, 'square', 100);
 			isHighRef.current = !isHighRef.current;
 		}, newInterval);
-	};
+	}, [asteroidsRef, initialAsteroidCountRef, currentHeartbeatIntervalRef, beep, isHighRef]);
 
-	const hyperspaceJump = (canvas) => {
+	const hyperspaceJump = useCallback((canvas) => {
 		let safe = false;
 		let attempts = 0;
 		playHyperspace();
@@ -131,11 +131,13 @@ const useAsteroidsGame = (canvasRef) => {
 			}
 			attempts++;
 		}
-	};
+	}, [playHyperspace, asteroidsRef, shipRef]);
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		const ctx = canvas.getContext('2d');
+
+		const engineSound = engineSoundRef.current;
 
 		const handleKeyDown = (e) => {
 			keyRefs.current[e.code] = true;
@@ -399,11 +401,11 @@ const useAsteroidsGame = (canvasRef) => {
 			soundFX
 		) => {
 
-			if (checkShipUFOCollision(ufoState, shipState, soundFX)) return;
+			checkShipUFOCollision(ufoState, shipState, soundFX);
 
-			if (checkUFOBulletsHitShip(ufoState, shipState, asteroidsState, gameState, soundFX)) return;
+			checkUFOBulletsHitShip(ufoState, shipState, asteroidsState, gameState, soundFX);
 
-			if (checkShipBulletsHitUFO(ufoState, bulletsRef, asteroidsState, gameState, soundFX)) return;
+			checkShipBulletsHitUFO(ufoState, bulletsRef, asteroidsState, gameState, soundFX);
 		};
 
 		const handleWaveEnd = (
@@ -580,9 +582,10 @@ const useAsteroidsGame = (canvasRef) => {
 			cancelAnimationFrame(animationRef.current);
 			clearInterval(heartbeatIntervalRef.current);
 			heartbeatIntervalRef.current = null;
-			if (engineSoundRef.current) engineSoundRef.current.stop();
+
+			if (engineSound) engineSound.stop();
 		};
-	}, [canvasRef]);
+	}, [canvasRef, hyperspaceJump, playEngineHum, playLaser, playExplosion, startHeartbeat, updateHeartbeatInterval]);
 
 };
 
