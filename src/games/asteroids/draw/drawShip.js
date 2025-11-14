@@ -13,7 +13,7 @@ const drawShip = (ctx, ship, options = {}) => {
       x + (4 / 3) * r * Math.cos(a),
       y - (4 / 3) * r * Math.sin(a)
     );
-  
+
     ctx.lineTo(
       x - r * (Math.cos(a) + 0.6 * Math.sin(a)),
       y + r * (Math.sin(a) - 0.6 * Math.cos(a))
