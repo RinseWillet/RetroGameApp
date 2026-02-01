@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/34</span>
+                <span class='fraction'>0/26</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/34</span>
+                <span class='fraction'>0/26</span>
             </div>
         
             
@@ -99,6 +99,18 @@
 <a name='L34'></a><a href='#L34'>34</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -106,44 +118,32 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import React, { useRef } from 'react';</span></span></span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import React, { useRef } from 'react';<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
 <span class="cstat-no" title="statement not covered" >import { useNavigate } from 'react-router-dom';</span>
 <span class="cstat-no" title="statement not covered" >import usePongGame from './usePongGame';</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >const Pong = () =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  const canvasRef = useRef(null);</span>
 <span class="cstat-no" title="statement not covered" >  const navigate = useNavigate();</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >  usePongGame(canvasRef);</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >  return (</span>
-<span class="cstat-no" title="statement not covered" >    &lt;div className="relative min-h-screen bg-black flex flex-col items-center justify-center"&gt;</span>
+<span class="cstat-no" title="statement not covered" >    &lt;div className="relative h-screen bg-black flex flex-col items-center justify-center"&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;div className="absolute inset-0 z-0 animate-stars pointer-events-none" /&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;h1 className="text-4xl font-bold text-pink-400 mb-6 neon-text z-10"&gt;Pong&lt;/h1&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >      &lt;canvas</span>
 <span class="cstat-no" title="statement not covered" >        ref={canvasRef}</span>
 <span class="cstat-no" title="statement not covered" >        tabIndex={0}</span>
@@ -151,17 +151,17 @@
 <span class="cstat-no" title="statement not covered" >        height={800}</span>
 <span class="cstat-no" title="statement not covered" >        className="border-4 border-pink-500 bg-black z-10 focus:outline-none"</span>
 <span class="cstat-no" title="statement not covered" >      /&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >      &lt;button</span>
 <span class="cstat-no" title="statement not covered" >        onClick={() =&gt; navigate('/')}</span>
 <span class="cstat-no" title="statement not covered" >        className="mt-8 px-6 py-3 border-2 border-pink-500 text-pink-400 hover:bg-pink-600 hover:text-black rounded-xl font-bold text-lg transition-all duration-300 neon-text"</span>
 <span class="cstat-no" title="statement not covered" >      &gt;</span>
-<span class="cstat-no" title="statement not covered" >        Back to Games</span>
+        Back to Games
 <span class="cstat-no" title="statement not covered" >      &lt;/button&gt;</span>
 <span class="cstat-no" title="statement not covered" >    &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >  );</span>
+  );
 <span class="cstat-no" title="statement not covered" >};</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >export default Pong;</span></pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -169,7 +169,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-07T15:59:22.036Z
+                at 2025-11-14T10:58:53.199Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

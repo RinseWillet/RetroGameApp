@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/29</span>
+                <span class='fraction'>0/18</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/29</span>
+                <span class='fraction'>0/18</span>
             </div>
         
             
@@ -86,67 +86,52 @@
 <a name='L21'></a><a href='#L21'>21</a>
 <a name='L22'></a><a href='#L22'>22</a>
 <a name='L23'></a><a href='#L23'>23</a>
-<a name='L24'></a><a href='#L24'>24</a>
-<a name='L25'></a><a href='#L25'>25</a>
-<a name='L26'></a><a href='#L26'>26</a>
-<a name='L27'></a><a href='#L27'>27</a>
-<a name='L28'></a><a href='#L28'>28</a>
-<a name='L29'></a><a href='#L29'>29</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L24'></a><a href='#L24'>24</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { useRef } from 'react'</span></span></span>
-<span class="cstat-no" title="statement not covered" ></span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { useRef } from 'react'<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
+<span class="cstat-no" title="statement not covered" >import { getAudioContext } from '../audio/audioCTX';</span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >const useSynthFX = () =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >  const audioCtxRef = useRef(null)</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  if (!audioCtxRef.current) {</span>
-<span class="cstat-no" title="statement not covered" >    audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >  const beep = (frequency = 440, volume = 1, type = 'sine', duration = 100) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    const audioCtx = audioCtxRef.current</span>
+<span class="cstat-no" title="statement not covered" >    const audioCtx = getAudioContext();</span>
 <span class="cstat-no" title="statement not covered" >    const oscillator = audioCtx.createOscillator()</span>
 <span class="cstat-no" title="statement not covered" >    const gainNode = audioCtx.createGain()</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    oscillator.connect(gainNode)</span>
 <span class="cstat-no" title="statement not covered" >    gainNode.connect(audioCtx.destination)</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    gainNode.gain.value = volume</span>
 <span class="cstat-no" title="statement not covered" >    oscillator.frequency.value = frequency</span>
 <span class="cstat-no" title="statement not covered" >    oscillator.type = type</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    oscillator.start()</span>
 <span class="cstat-no" title="statement not covered" >    oscillator.stop(audioCtx.currentTime + (duration / 1000))</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >  return { beep }</span>
 <span class="cstat-no" title="statement not covered" >}</span>
-<span class="cstat-no" title="statement not covered" ></span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >export default useSynthFX</span></pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -154,7 +139,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-07T15:59:22.036Z
+                at 2025-11-14T10:58:53.199Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
