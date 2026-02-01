@@ -1,11 +1,11 @@
-name: Build and Deploy to Docker Hub and Synology NAS
+name: Build and Push to Docker Hub
 
 on:
   push:
     branches: [main]
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,10 +26,6 @@ jobs:
     - name: Build Vite app
       run: npm run build
 
-    - name: Set image tag
-      id: vars
-      run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
@@ -39,25 +35,10 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Build Docker image (for NAS)
-      run: docker build -t retrogameapp:${{ steps.vars.outputs.tag }} .
-
-    - name: Push Docker image to Docker Hub
+    - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
         file: ./Dockerfile
         push: true
         tags: rinsedev/retrogameapp:latest
-
-    - name: Deploy to Synology NAS
-      uses: ./.github/actions/deploy-to-nas
-      with:
-        image-name: retrogameapp
-        tag: ${{ steps.vars.outputs.tag }}
-        container-name: ${{ secrets.DOCKER_CONTAINER_NAME }}
-        nas-host: ${{ secrets.NAS_HOST }}
-        nas-username: ${{ secrets.NAS_USERNAME }}
-        nas-ssh-key: ${{ secrets.NAS_SSH_PRIVATE_KEY }}
-        nas-target-dir: ${{ secrets.NAS_TARGET_DIR }}
-        nas-ssh-port: ${{ secrets.NAS_SSH_PORT }}
