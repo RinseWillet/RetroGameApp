@@ -1,0 +1,13 @@
+services:
+  retrogame:
+    build: .
+    image: rinsedev/retrogame:latest
+    restart: on-failure
+    expose:
+      - "80"
+    networks:
+      - webgis-edge
+
+networks:
+  webgis-edge:
+    external: true
