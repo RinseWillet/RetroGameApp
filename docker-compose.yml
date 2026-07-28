@@ -1,8 +1,8 @@
 services:
   retrogame:
     build: .
-    image: rinsedev/retrogame:latest
-    restart: on-failure
+    image: rinsedev/retrogameapp:latest
+    restart: unless-stopped
     expose:
       - "80"
     networks:
