@@ -4,7 +4,7 @@ import { ROUTES } from './routes'
 const App = () => {
 
   return (
-    <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         {ROUTES.map(({ path, element }) => (
           <Route key={path} path={path} element={element} />
