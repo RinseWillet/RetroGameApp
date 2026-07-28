@@ -7,9 +7,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy source and build
+# Copy source and build with arcade base path for NAS deployment
 COPY . .
-RUN npm run build
+RUN VITE_BASE_PATH=/arcade/ npm run build
 
 # ---- Runtime stage ----
 FROM nginx:alpine
@@ -20,7 +20,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Static files from the build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Nginx listens on 80; Synology will map 1982 -> 80
+# Nginx listens on 80; proxied via webgis-edge network from main nginx
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
